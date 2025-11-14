@@ -623,10 +623,101 @@ async def get_activity_vigor_poll(tripID: str = Query(...)):
     return {"vigor_preferences": MOCK_VIGOR_PREFERENCES}
 
 @app.get("/polls/get/food_cuisines")
-async def get_food_cuisines_poll(tripID: str = Query(...)):
-    """Get food cuisine poll (mock data)."""
-    # Return mock cuisines regardless of tripID
-    return {"cuisines": MOCK_CUISINES}
+async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(None)):
+    """
+    Get food cuisine poll with real vote counts from database.
+    If userID is provided, also includes the user's selected cuisines.
+    """
+    if db is None:
+        # Fallback to mock data if database not connected
+        return {"cuisines": MOCK_CUISINES}
+    
+    votes_collection = db.votes
+    
+    # Get all cuisine votes for this trip
+    cuisine_votes = await votes_collection.find({
+        "tripID": tripID,
+        "voteType": "food_cuisine"
+    }).to_list(length=1000)
+    
+    # Count votes per cuisine
+    vote_counts = {}
+    user_selected = set()
+    
+    for vote in cuisine_votes:
+        cuisine_name = vote.get("voteValue")  # For cuisine, voteValue stores the cuisine name
+        
+        if cuisine_name:
+            if cuisine_name not in vote_counts:
+                vote_counts[cuisine_name] = 0
+            vote_counts[cuisine_name] += 1
+            
+            # Track user's selections if userID provided
+            if userID and vote["userID"] == userID:
+                user_selected.add(cuisine_name)
+    
+    # Start with mock cuisines and enrich with real vote data
+    cuisines = []
+    for mock_cuisine in MOCK_CUISINES:
+        cuisine_name = mock_cuisine["name"]
+        
+        cuisine = {
+            **mock_cuisine,
+            "votes": vote_counts.get(cuisine_name, 0),
+            "selected": cuisine_name in user_selected
+        }
+        cuisines.append(cuisine)
+    
+    return {"cuisines": cuisines}
+
+
+@app.post("/polls/vote/food_cuisine")
+async def vote_food_cuisine(vote_data: dict):
+    """
+    Submit cuisine votes. Replaces all previous cuisine votes for this user.
+    """
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = vote_data.get("tripID")
+    userID = vote_data.get("userID")
+    selectedCuisines = vote_data.get("selectedCuisines", [])
+    
+    if not all([tripID, userID]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, userID")
+    
+    votes_collection = db.votes
+    
+    # Remove all existing cuisine votes for this user in this trip
+    await votes_collection.delete_many({
+        "tripID": tripID,
+        "userID": userID,
+        "voteType": "food_cuisine"
+    })
+    
+    # Insert new votes for selected cuisines
+    if selectedCuisines:
+        vote_docs = []
+        for cuisine_name in selectedCuisines:
+            vote_doc = {
+                "tripID": tripID,
+                "userID": userID,
+                "optionID": cuisine_name,  # Using cuisine name as optionID
+                "voteType": "food_cuisine",
+                "vote": True,  # All cuisine selections are positive votes
+                "voteValue": cuisine_name,  # Store cuisine name in voteValue
+                "createdAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow()
+            }
+            vote_docs.append(vote_doc)
+        
+        if vote_docs:
+            await votes_collection.insert_many(vote_docs)
+    
+    return {
+        "message": "Cuisine votes submitted successfully",
+        "selectedCuisines": selectedCuisines
+    }
 
 @app.post("/polls/vote/activity")
 async def vote_activity(vote_data: dict):
