@@ -321,37 +321,6 @@ paths:
         '404':
           description: Trip not found
 
-  /polls/get/activity_vigor:
-    get:
-      summary: Get activity vigor poll
-      description: Retrieve activity vigor preferences for a trip
-      parameters:
-        - name: tripID
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Activity vigor poll retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  vigor_preferences:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        activity_id:
-                          type: string
-                        vigor:
-                          type: string
-                          enum: [low, medium, high]
-        '404':
-          description: Trip not found
-
   /polls/get/food_cuisines:
     get:
       summary: Get food cuisine poll

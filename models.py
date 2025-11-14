@@ -18,6 +18,13 @@ class ActivityType(str, Enum):
     ACCOMMODATION = "accommodation"
 
 
+class VigorLevel(str, Enum):
+    """Enumeration of activity vigor levels."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class Activity(BaseModel):
     """
     Model representing a single activity in a trip itinerary.
@@ -27,6 +34,7 @@ class Activity(BaseModel):
     activity_name: str = Field(..., description="Name of the activity")
     activity_type: ActivityType = Field(..., description="Type of activity")
     activity_description: str = Field(..., description="Detailed description of the activity")
+    vigor: Optional[VigorLevel] = Field(None, description="Activity intensity level (low, medium, high)")
     from_date_time: datetime = Field(..., description="Start date and time of the activity")
     start_location: str = Field(..., description="Starting location name")
     start_lat: float = Field(..., description="Starting latitude coordinate")
@@ -45,6 +53,7 @@ class Activity(BaseModel):
                 "activity_name": "Sagrada Familia tour",
                 "activity_type": "attraction",
                 "activity_description": "Guided tour of Gaudí's masterpiece, the iconic Sagrada Familia basilica.",
+                "vigor": "medium",
                 "from_date_time": "2025-04-12T10:00:00Z",
                 "start_location": "Sagrada Familia",
                 "start_lat": 41.4036,

@@ -576,49 +576,6 @@ MOCK_LOCATIONS = [
     }
 ]
 
-MOCK_VIGOR_PREFERENCES = [
-    {
-        "activity_id": "act_001",
-        "activity_name": "Sagrada Familia tour",
-        "preferences": {
-            "low": 1,
-            "medium": 3,
-            "high": 1
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_002",
-        "activity_name": "Park Güell visit",
-        "preferences": {
-            "low": 4,
-            "medium": 1,
-            "high": 0
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_003",
-        "activity_name": "Beach day",
-        "preferences": {
-            "low": 5,
-            "medium": 0,
-            "high": 0
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_004",
-        "activity_name": "Tapas tour",
-        "preferences": {
-            "low": 3,
-            "medium": 2,
-            "high": 0
-        },
-        "user_preference": None
-    }
-]
-
 MOCK_CUISINES = [
     {"name": "Spanish", "votes": 0, "selected": False},
     {"name": "Tapas", "votes": 0, "selected": False},
@@ -699,12 +656,6 @@ async def get_location_poll(tripID: str = Query(...)):
     """Get location poll (mock data)."""
     # Return mock locations regardless of tripID
     return {"locations": MOCK_LOCATIONS}
-
-@app.get("/polls/get/activity_vigor")
-async def get_activity_vigor_poll(tripID: str = Query(...)):
-    """Get activity vigor poll (mock data)."""
-    # Return mock vigor preferences regardless of tripID
-    return {"vigor_preferences": MOCK_VIGOR_PREFERENCES}
 
 @app.get("/polls/get/food_cuisines")
 async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(None)):
