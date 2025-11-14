@@ -1,0 +1,114 @@
+[
+  {
+    "holiday_name": "Spain Week",
+    "holiday_id": "holiday_001",
+    "activities": [
+      {
+        "activity_id": "activity_001a",
+        "activity_name": "Stay in Barcelona",
+        "activity_type": "attraction",
+        "activity_description": "Multi-day exploration of Barcelona including its famous landmarks, architecture, and cultural attractions.",
+        "from_date_time": "2025-04-12T08:00:00Z",
+        "start_location": "Barcelona",
+        "start_lat": 41.4036,
+        "start_lon": 2.1744,
+        "to_date_time": "2025-04-14T20:00:00Z",
+        "end_location": "Barcelona",
+        "end_lat": 41.4036,
+        "end_lon": 2.1744,
+        "activities": [
+          {
+            "activity_id": "activity_001a1",
+            "activity_name": "Sagrada Familia tour",
+            "activity_type": "attraction",
+            "activity_description": "Guided tour of Gaudí's masterpiece, the iconic Sagrada Familia basilica with its stunning architecture and intricate details.",
+            "from_date_time": "2025-04-12T10:00:00Z",
+            "start_location": "Sagrada Familia",
+            "start_lat": 41.4036,
+            "start_lon": 2.1744,
+            "to_date_time": "2025-04-12T11:30:00Z",
+            "end_location": "Sagrada Familia",
+            "end_lat": 41.4036,
+            "end_lon": 2.1744,
+            "activities": []
+          },
+          {
+            "activity_id": "activity_001a2",
+            "activity_name": "Park Güell visit",
+            "activity_type": "attraction",
+            "activity_description": "Visit Gaudí's whimsical Park Güell with its colorful mosaics, unique architecture, and panoramic views of Barcelona.",
+            "from_date_time": "2025-04-12T14:00:00Z",
+            "start_location": "Park Güell",
+            "start_lat": 41.4145,
+            "start_lon": 2.1527,
+            "to_date_time": "2025-04-12T16:00:00Z",
+            "end_location": "Park Güell",
+            "end_lat": 41.4145,
+            "end_lon": 2.1527,
+            "activities": []
+          },
+          {
+            "activity_id": "activity_001a3",
+            "activity_name": "Gothic Quarter walking tour",
+            "activity_type": "attraction",
+            "activity_description": "Explore the medieval streets of the Gothic Quarter, discovering hidden squares, ancient buildings, and charming cafes.",
+            "from_date_time": "2025-04-12T17:00:00Z",
+            "start_location": "Gothic Quarter",
+            "start_lat": 41.3833,
+            "start_lon": 2.1751,
+            "to_date_time": "2025-04-12T19:00:00Z",
+            "end_location": "Gothic Quarter",
+            "end_lat": 41.3833,
+            "end_lon": 2.1751,
+            "activities": []
+          }
+        ]
+      },
+      {
+        "activity_id": "activity_001b",
+        "activity_name": "Madrid cultural visit",
+        "activity_type": "travel",
+        "activity_description": "Journey to Madrid to explore Spain's capital city with its world-class museums, royal palaces, and vibrant cultural scene.",
+        "from_date_time": "2025-04-15T09:00:00Z",
+        "start_location": "Barcelona",
+        "start_lat": 41.4036,
+        "start_lon": 2.1744,
+        "to_date_time": "2025-04-17T18:00:00Z",
+        "end_location": "Madrid",
+        "end_lat": 40.4168,
+        "end_lon": -3.7038,
+        "activities": []
+      },
+      {
+        "activity_id": "activity_001c",
+        "activity_name": "Valencia coastal experience",
+        "activity_type": "travel",
+        "activity_description": "Travel to Valencia to enjoy its beautiful beaches, modern architecture, and famous paella in this Mediterranean coastal city.",
+        "from_date_time": "2025-04-14T10:00:00Z",
+        "start_location": "Barcelona",
+        "start_lat": 41.4036,
+        "start_lon": 2.1744,
+        "to_date_time": "2025-04-14T19:00:00Z",
+        "end_location": "Valencia",
+        "end_lat": 39.4699,
+        "end_lon": -0.3763,
+        "activities": []
+      },
+      {
+        "activity_id": "activity_001d",
+        "activity_name": "Seville historic exploration",
+        "activity_type": "travel",
+        "activity_description": "Discover Seville's rich Moorish heritage, stunning cathedral, and traditional Andalusian culture in this historic southern city.",
+        "from_date_time": "2025-04-15T08:00:00Z",
+        "start_location": "Valencia",
+        "start_lat": 39.4699,
+        "start_lon": -0.3763,
+        "to_date_time": "2025-04-15T17:00:00Z",
+        "end_location": "Seville",
+        "end_lat": 37.3891,
+        "end_lon": -5.9845,
+        "activities": []
+      }
+    ]
+  }
+]

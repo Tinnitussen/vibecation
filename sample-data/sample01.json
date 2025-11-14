@@ -1,0 +1,23 @@
+[
+  {
+    "holiday_name": "Barcelona Weekend",
+    "holiday_id": "holiday_001",
+    "activities": [
+      {
+        "activity_id": "activity_001a",
+        "activity_name": "Stay in Barcelona",
+        "activity_type": "attraction",
+        "activity_description": "Explore the vibrant city of Barcelona with its rich culture, stunning architecture, and Mediterranean atmosphere.",
+        "from_date_time": "2025-04-12T10:00:00Z",
+        "start_location": "Barcelona",
+        "start_lat": 41.4036,
+        "start_lon": 2.1744,
+        "to_date_time": "2025-04-12T12:30:00Z",
+        "end_location": "Barcelona",
+        "end_lat": 41.4036,
+        "end_lon": 2.1744,
+        "activities": []
+      }
+    ]
+  }
+]
