@@ -8,11 +8,13 @@ from pydantic import field_validator
 from typing import List, Optional
 from datetime import datetime
 import bcrypt
+import json
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import secrets
 import string
 from contextlib import asynccontextmanager
+from brainstormchat import brainstorm_chat
 
 # Database connection
 client: Optional[AsyncIOMotorClient] = None
@@ -1057,6 +1059,115 @@ async def vote_location(vote_data: dict):
                     }
             raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
 
+# Mock data for brainstorm
+MOCK_DAYS = [
+    {
+        "id": 1,
+        "date": "2025-04-12",
+        "location": "Barcelona",
+        "description": "Day 1 in Barcelona",
+        "activities": [
+            {
+                "id": 1,
+                "activity_id": "act_001",
+                "activity_name": "Sagrada Familia tour",
+                "type": "sightseeing",
+                "description": "Guided tour of Gaudí's masterpiece, the iconic Sagrada Familia basilica with its stunning architecture and intricate details.",
+                "vigor": "medium",
+                "from_date_time": "2025-04-12T10:00:00Z",
+                "to_date_time": "2025-04-12T11:30:00Z",
+                "location": "Sagrada Familia",
+                "start_lat": 41.4036,
+                "start_lon": 2.1744,
+                "end_lat": 41.4036,
+                "end_lon": 2.1744
+            },
+            {
+                "id": 2,
+                "activity_id": "act_002",
+                "activity_name": "Park Güell visit",
+                "type": "sightseeing",
+                "description": "Visit Gaudí's whimsical Park Güell with its colorful mosaics, unique architecture, and panoramic views of Barcelona.",
+                "vigor": "low",
+                "from_date_time": "2025-04-12T14:00:00Z",
+                "to_date_time": "2025-04-12T16:00:00Z",
+                "location": "Park Güell",
+                "start_lat": 41.4145,
+                "start_lon": 2.1527,
+                "end_lat": 41.4145,
+                "end_lon": 2.1527
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "date": "2025-04-13",
+        "location": "Barcelona",
+        "description": "Day 2 in Barcelona",
+        "activities": [
+            {
+                "id": 3,
+                "activity_id": "act_003",
+                "activity_name": "Beach day at Barceloneta",
+                "type": "relaxing",
+                "description": "Relax at Barceloneta Beach, enjoy the Mediterranean sun and sea.",
+                "vigor": "low",
+                "from_date_time": "2025-04-13T10:00:00Z",
+                "to_date_time": "2025-04-13T16:00:00Z",
+                "location": "Barceloneta Beach",
+                "start_lat": 41.3798,
+                "start_lon": 2.1900,
+                "end_lat": 41.3798,
+                "end_lon": 2.1900
+            }
+        ]
+    }
+]
+
+MOCK_TRIP_SUMMARY = "I've created a wonderful 2-day trip to Barcelona! Day 1 includes a guided tour of the iconic Sagrada Familia basilica, one of Gaudí's masterpieces, followed by a visit to Park Güell with its colorful mosaics and panoramic city views. Day 2 is a relaxing beach day at Barceloneta Beach where you can enjoy the Mediterranean sun and sea. This itinerary balances cultural exploration with relaxation, perfect for experiencing Barcelona's unique architecture and beautiful coastline."
+
+@app.get("/trip_brinstorm")
+async def trip_brinstorm(
+    tripID: str = Query(...),
+    userID: str = Query(...),
+    query: str = Query(...),
+    old_plan: str = Query(...),
+    tripSuggestionID: str = Query(...)
+):
+    """
+    Generate or iterate on trip plan.
+    If old_plan is empty JSON ({}) or empty, generates initial plan.
+    Otherwise, iterates on existing plan.
+    """
+    # Parse old_plan parameter
+    try:
+        old_plan_json = json.loads(old_plan)
+    except (json.JSONDecodeError, TypeError):
+        old_plan_json = {}
+    
+    # Call the brainstorm_chat function
+    try:
+        result = brainstorm_chat(query, old_plan_json)
+        # Ensure datetime objects are serialized properly
+        # FastAPI will handle this, but we can also use json.dumps/loads to ensure proper format
+        return result
+    except Exception as e:
+        # Fallback to mock data if OpenAI call fails
+        print(f"Error calling brainstorm_chat: {e}")
+        return {
+            "days": MOCK_DAYS,
+            "trip_summary": MOCK_TRIP_SUMMARY
+        }
+
+
+@app.post("/post_trip_suggestion")
+async def post_trip_suggestion(suggestion_data: dict):
+    """Post a trip suggestion (mock - just returns success)."""
+    # Mock implementation - in real app, would save to database
+    return {
+        "message": "Trip suggestion posted successfully",
+        "tripSuggestionID": suggestion_data.get("tripSuggestionID")
+    }
 
 if __name__ == "__main__":
     import uvicorn

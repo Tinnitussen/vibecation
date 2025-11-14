@@ -131,82 +131,50 @@ paths:
         '400':
           description: Invalid request data
 
-  /initial_trip_planner:
+  /trip_brinstorm:
     get:
-      summary: Generate initial trip plan
-      description: Create an initial trip plan based on user query
+      summary: Generate or iterate on trip plan
+      description: |
+        Unified endpoint for trip planning. 
+        - If old_plan is empty JSON ({}) or empty, generates initial trip plan.
+        - If old_plan contains existing plan data, iterates on the existing plan.
       parameters:
         - name: tripSuggestionID
           in: query
           required: true
           schema:
             type: string
+          description: Unique identifier for the trip suggestion session
         - name: tripID
           in: query
           required: true
           schema:
             type: string
+          description: Unique identifier for the trip
         - name: userID
           in: query
           required: true
           schema:
             type: string
+          description: Unique identifier for the user
         - name: query
           in: query
           required: true
           schema:
             type: string
-            description: User's trip planning query/preferences/prompt
-      responses:
-        '200':
-          description: Trip plan generated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  days:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/VibecationDay'
-        '400':
-          description: Invalid parameters
-
-  /iterate_trip_planner:
-    get:
-      summary: Iterate on existing trip plan
-      description: Modify an existing trip plan based on new query
-      parameters:
-        - name: tripSuggestionID
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: tripID
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: userID
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: query
-          in: query
-          required: true
-          schema:
-            type: string
-            description: Modification query/preferences
+          description: User's trip planning query/preferences/prompt
         - name: old_plan
           in: query
           required: true
           schema:
             type: string
-            description: JSON string of old plan (array of VibecationDay)
+          description: |
+            JSON string of old plan (array of VibecationDay).
+            For first message, send empty JSON: "{}"
+            For subsequent messages, send the current days array as JSON string.
       responses:
         '200':
-          description: Trip plan updated successfully
+          description: Trip plan generated or updated successfully
           content:
             application/json:
               schema:
@@ -216,6 +184,9 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/VibecationDay'
+                  trip_summary:
+                    type: string
+                    description: A comprehensive description of the trip and activities
         '400':
           description: Invalid parameters
 

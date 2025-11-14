@@ -23,7 +23,19 @@ vibecation/
 ### Running with Docker
 
 1. Clone the repository
-2. Run the following command:
+2. Create a `.env` file in the root directory with your Azure OpenAI credentials:
+
+```bash
+cp .env.example .env
+# Then edit .env and add your Azure OpenAI credentials
+```
+
+Required environment variables:
+- `AZURE_OPENAI_API_KEY` - Your Azure OpenAI API key
+- `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL (e.g., `https://your-resource-name.openai.azure.com`)
+- `AZURE_OPENAI_API_VERSION` - API version (default: `2024-02-15-preview`)
+
+3. Run the following command:
 
 ```bash
 docker-compose up --build
