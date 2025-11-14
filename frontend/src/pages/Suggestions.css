@@ -370,6 +370,26 @@
   text-transform: capitalize;
 }
 
+.vigor-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.activities-preview li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.activity-name {
+  flex: 1;
+}
+
 .poll-item h3 {
   font-size: 18px;
   font-weight: 600;

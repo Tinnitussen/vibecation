@@ -268,6 +268,15 @@ function Suggestions() {
     return colors[type] || '#757575'
   }
 
+  const getVigorColor = (vigor) => {
+    const colors = {
+      low: '#81C784',
+      medium: '#FFB74D',
+      high: '#E57373'
+    }
+    return colors[vigor] || '#757575'
+  }
+
   const calculatePollProgress = () => {
     const totalPolls = 3
     let completed = 0
@@ -342,6 +351,7 @@ function Suggestions() {
                   totalDays={totalDays}
                   totalActivities={totalActivities}
                   uniqueLocations={uniqueLocations}
+                  getVigorColor={getVigorColor}
                 />
               )
             })}
@@ -393,6 +403,7 @@ function Suggestions() {
                 activities={activities}
                 onVote={handleActivityVote}
                 getActivityTypeColor={getActivityTypeColor}
+                getVigorColor={getVigorColor}
               />
             )}
             {activeTab === 'locations' && (
@@ -414,7 +425,7 @@ function Suggestions() {
   )
 }
 
-function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalActivities, uniqueLocations }) {
+function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalActivities, uniqueLocations, getVigorColor }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -445,7 +456,20 @@ function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalAc
               {day.activities && day.activities.length > 0 && (
                 <ul className="activities-preview">
                   {day.activities.slice(0, 3).map((activity, actIdx) => (
-                    <li key={actIdx}>{activity.activity_name}</li>
+                    <li key={actIdx}>
+                      <span className="activity-name">{activity.activity_name}</span>
+                      {activity.vigor && (
+                        <span 
+                          className="vigor-badge"
+                          style={{ 
+                            backgroundColor: getVigorColor(activity.vigor),
+                            color: '#FFFFFF'
+                          }}
+                        >
+                          {activity.vigor}
+                        </span>
+                      )}
+                    </li>
                   ))}
                   {day.activities.length > 3 && (
                     <li className="more-activities">+{day.activities.length - 3} more</li>
@@ -499,7 +523,7 @@ function UnifiedPoll({ items, onVote, getItemId, getItemName, getItemHeader, get
   )
 }
 
-function ActivityPoll({ activities, onVote, getActivityTypeColor }) {
+function ActivityPoll({ activities, onVote, getActivityTypeColor, getVigorColor }) {
   return (
     <UnifiedPoll
       items={activities}
@@ -508,12 +532,25 @@ function ActivityPoll({ activities, onVote, getActivityTypeColor }) {
       getItemName={(item) => item.activity_name}
       getItemHeader={(item) => (
         <>
-          <span
-            className="activity-type-badge"
-            style={{ backgroundColor: getActivityTypeColor(item.type) }}
-          >
-            {item.type}
-          </span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span
+              className="activity-type-badge"
+              style={{ backgroundColor: getActivityTypeColor(item.type) }}
+            >
+              {item.type}
+            </span>
+            {item.vigor && (
+              <span 
+                className="vigor-badge"
+                style={{ 
+                  backgroundColor: getVigorColor(item.vigor),
+                  color: '#FFFFFF'
+                }}
+              >
+                {item.vigor}
+              </span>
+            )}
+          </div>
           <h3>{item.activity_name}</h3>
         </>
       )}
