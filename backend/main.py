@@ -687,7 +687,10 @@ async def trip_brinstorm(
     except Exception as e:
         # Fallback to mock data if OpenAI call fails
         print(f"Error calling brainstorm_chat: {e}")
-        return {"error": str(e)}
+        return {
+            "days": MOCK_DAYS,
+            "trip_summary": MOCK_TRIP_SUMMARY
+        }
 
 
 @app.post("/post_trip_suggestion")
