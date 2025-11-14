@@ -1,5 +1,5 @@
 """
-Pydantic models for the Vibecation holiday planning application.
+Pydantic models for the Vibecation trip planning application.
 Based on the JSON structure from sample03.json.
 """
 
@@ -20,7 +20,7 @@ class ActivityType(str, Enum):
 
 class Activity(BaseModel):
     """
-    Model representing a single activity in a holiday itinerary.
+    Model representing a single activity in a trip itinerary.
     Activities can be nested to represent sub-activities.
     """
     activity_id: str = Field(..., description="Unique identifier for the activity")
@@ -58,54 +58,54 @@ class Activity(BaseModel):
         }
 
 
-class Holiday(BaseModel):
+class Trip(BaseModel):
     """
-    Model representing a complete holiday itinerary.
+    Model representing a complete trip itinerary.
     """
-    holiday_name: str = Field(..., description="Name of the holiday")
-    holiday_id: str = Field(..., description="Unique identifier for the holiday")
-    activities: List[Activity] = Field(..., description="List of activities in the holiday")
+    trip_name: str = Field(..., description="Name of the trip")
+    trip_id: str = Field(..., description="Unique identifier for the trip")
+    activities: List[Activity] = Field(..., description="List of activities in the trip")
 
     class Config:
         """Pydantic configuration."""
         json_schema_extra = {
             "example": {
-                "holiday_name": "Spain Week",
-                "holiday_id": "holiday_001",
+                "trip_name": "Spain Week",
+                "trip_id": "trip_001",
                 "activities": []
             }
         }
 
 
-class HolidayList(BaseModel):
+class TripList(BaseModel):
     """
-    Root model representing a list of holidays.
+    Root model representing a list of trips.
     This matches the JSON array structure.
     """
-    holidays: List[Holiday] = Field(..., description="List of holidays")
+    trips: List[Trip] = Field(..., description="List of trips")
 
     @classmethod
-    def from_json_array(cls, json_data: List[dict]) -> 'HolidayList':
+    def from_json_array(cls, json_data: List[dict]) -> 'TripList':
         """
-        Create a HolidayList from a JSON array structure.
+        Create a TripList from a JSON array structure.
         
         Args:
-            json_data: List of holiday dictionaries
+            json_data: List of trip dictionaries
             
         Returns:
-            HolidayList instance
+            TripList instance
         """
-        holidays = [Holiday(**holiday_data) for holiday_data in json_data]
-        return cls(holidays=holidays)
+        trips = [Trip(**trip_data) for trip_data in json_data]
+        return cls(trips=trips)
 
     class Config:
         """Pydantic configuration."""
         json_schema_extra = {
             "example": {
-                "holidays": [
+                "trips": [
                     {
-                        "holiday_name": "Spain Week",
-                        "holiday_id": "holiday_001",
+                        "trip_name": "Spain Week",
+                        "trip_id": "trip_001",
                         "activities": []
                     }
                 ]
