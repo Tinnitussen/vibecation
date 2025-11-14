@@ -10,8 +10,13 @@ function Dashboard() {
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showJoinModal, setShowJoinModal] = useState(false)
+  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false)
   const [newTrip, setNewTrip] = useState({ title: '', description: '', members: '' })
+  const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [createdInviteCode, setCreatedInviteCode] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -77,13 +82,47 @@ function Dashboard() {
       
       setShowCreateModal(false)
       setNewTrip({ title: '', description: '', members: '' })
+      setCreatedInviteCode({ code: response.data.inviteCode, tripID: response.data.tripID })
+      setShowInviteCodeModal(true)
       loadTrips()
-      navigate(`/trips/${response.data.tripID}/overview`)
     } catch (err) {
       console.error('Failed to create trip:', err)
       alert('Failed to create trip. Please try again.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleJoinTrip = async (e) => {
+    e.preventDefault()
+    setJoining(true)
+    
+    try {
+      const response = await apiClient.post('/trips/join', null, {
+        params: {
+          inviteCode: joinCode.toUpperCase().trim(),
+          userID: userID
+        }
+      })
+      
+      if (response.data.alreadyMember) {
+        alert('You are already a member of this trip!')
+      } else {
+        alert(`Successfully joined "${response.data.title}"!`)
+        setShowJoinModal(false)
+        setJoinCode('')
+        loadTrips()
+        navigate(`/trips/${response.data.tripID}/overview`)
+      }
+    } catch (err) {
+      console.error('Failed to join trip:', err)
+      if (err.response?.status === 404) {
+        alert('Invalid invite code. Please check and try again.')
+      } else {
+        alert('Failed to join trip. Please try again.')
+      }
+    } finally {
+      setJoining(false)
     }
   }
 
@@ -125,12 +164,20 @@ function Dashboard() {
         <div className="dashboard-content">
           <div className="dashboard-title-section">
             <h2>My Trips</h2>
-            <button 
-              className="btn-create-trip"
-              onClick={() => setShowCreateModal(true)}
-            >
-              + Create New Trip
-            </button>
+            <div className="dashboard-actions">
+              <button 
+                className="btn-join-trip"
+                onClick={() => setShowJoinModal(true)}
+              >
+                🔗 Join Trip
+              </button>
+              <button 
+                className="btn-create-trip"
+                onClick={() => setShowCreateModal(true)}
+              >
+                + Create New Trip
+              </button>
+            </div>
           </div>
 
           {trips.length === 0 ? (
@@ -223,6 +270,7 @@ function Dashboard() {
                   onChange={(e) => setNewTrip({ ...newTrip, members: e.target.value })}
                   placeholder="user_002, user_003"
                 />
+                <small>Or share the invite code after creation!</small>
               </div>
               <div className="modal-actions">
                 <button
@@ -237,6 +285,88 @@ function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showJoinModal && (
+        <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Join Trip with Invite Code</h2>
+            <form onSubmit={handleJoinTrip}>
+              <div className="form-group">
+                <label htmlFor="join-code">Invite Code *</label>
+                <input
+                  id="join-code"
+                  type="text"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="Enter 8-character code"
+                  maxLength={8}
+                  required
+                  style={{ 
+                    textTransform: 'uppercase',
+                    fontFamily: 'monospace',
+                    fontSize: '1.2em',
+                    letterSpacing: '0.1em',
+                    textAlign: 'center'
+                  }}
+                />
+                <small>Enter the invite code shared by the trip owner</small>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowJoinModal(false)
+                    setJoinCode('')
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={joining}>
+                  {joining ? 'Joining...' : 'Join Trip'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showInviteCodeModal && createdInviteCode && (
+        <div className="modal-overlay" onClick={() => {
+          setShowInviteCodeModal(false)
+          setCreatedInviteCode(null)
+          navigate(`/trips/${createdInviteCode.tripID}/overview`)
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>🎉 Trip Created!</h2>
+            <p>Share this invite code with others to let them join your trip:</p>
+            <div className="invite-code-display">
+              <code className="invite-code">{createdInviteCode.code}</code>
+              <button
+                className="btn-copy"
+                onClick={() => {
+                  navigator.clipboard.writeText(createdInviteCode.code)
+                  alert('Invite code copied to clipboard!')
+                }}
+              >
+                📋 Copy
+              </button>
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  setShowInviteCodeModal(false)
+                  setCreatedInviteCode(null)
+                  navigate(`/trips/${createdInviteCode.tripID}/overview`)
+                }}
+              >
+                Go to Trip
+              </button>
+            </div>
           </div>
         </div>
       )}
