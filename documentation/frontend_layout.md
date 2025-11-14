@@ -598,13 +598,191 @@ This document describes the frontend component structure and layout for the Vibe
 
 ---
 
-## Styling Guidelines
+## Style Schema
 
-- **Color Scheme**: Travel-themed (blues, greens, warm accents)
-- **Typography**: Clean, readable sans-serif
-- **Spacing**: Consistent spacing scale (4px, 8px, 16px, 24px, 32px)
-- **Responsive**: Mobile-first approach
-- **Accessibility**: WCAG 2.1 AA compliance
+### Color Palette
+
+#### Primary Colors
+- **Main Background**: `#FAFAFA` (off-white, light gray-white)
+  - Alternative: `#FFFFFF` (pure white) for cards and elevated surfaces
+  - Usage: Primary page backgrounds, main content areas
+
+- **Details Accent**: Neon Purple-Pink
+  - Primary: `#FF00FF` (magenta/fuchsia) or `#FF1493` (deep pink)
+  - Alternative: `#E91E63` (pink) with neon glow effect
+  - Gradient option: Linear gradient from `#FF00FF` to `#FF1493`
+  - Usage: 
+    - Detail text, labels, and metadata
+    - Accent borders and highlights
+    - Interactive elements (links, buttons in detail contexts)
+    - Icons and badges for detail information
+    - Form field focus states in detail sections
+    - Progress indicators and status badges
+
+#### Secondary Colors
+- **Text Primary**: `#1A1A1A` (near black) or `#212121` (dark gray)
+- **Text Secondary**: `#757575` (medium gray)
+- **Text Tertiary**: `#9E9E9E` (light gray)
+- **Border Color**: `#E0E0E0` (light gray)
+- **Divider Color**: `#F5F5F5` (very light gray)
+
+#### Semantic Colors
+- **Success**: `#4CAF50` (green)
+- **Warning**: `#FF9800` (orange)
+- **Error**: `#F44336` (red)
+- **Info**: `#2196F3` (blue)
+
+#### Activity Type Colors (for badges and indicators)
+- **Watersport**: `#00BCD4` (cyan)
+- **Sightseeing**: `#9C27B0` (purple)
+- **Relaxing**: `#4CAF50` (green)
+- **Adventure**: `#FF5722` (deep orange)
+- **Food**: `#FF9800` (orange)
+- **Nightlife**: `#673AB7` (deep purple)
+
+#### Vigor Indicator Colors
+- **Low**: `#81C784` (light green)
+- **Medium**: `#FFB74D` (light orange)
+- **High**: `#E57373` (light red)
+
+### Typography
+
+#### Font Families
+- **Primary**: Clean, modern sans-serif
+  - Recommended: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+- **Monospace**: For code, timestamps, or technical data
+  - Recommended: 'Courier New', 'Monaco', monospace
+
+#### Font Sizes
+- **H1 (Page Titles)**: 32px / 2rem, font-weight: 700
+- **H2 (Section Titles)**: 24px / 1.5rem, font-weight: 600
+- **H3 (Subsection Titles)**: 20px / 1.25rem, font-weight: 600
+- **H4 (Card Titles)**: 18px / 1.125rem, font-weight: 600
+- **Body Large**: 16px / 1rem, font-weight: 400
+- **Body**: 14px / 0.875rem, font-weight: 400
+- **Body Small**: 12px / 0.75rem, font-weight: 400
+- **Caption**: 11px / 0.6875rem, font-weight: 400
+
+#### Line Heights
+- **Headings**: 1.2
+- **Body Text**: 1.5
+- **Tight**: 1.3 (for compact layouts)
+
+### Spacing Scale
+
+- **XS**: 4px / 0.25rem
+- **SM**: 8px / 0.5rem
+- **MD**: 16px / 1rem
+- **LG**: 24px / 1.5rem
+- **XL**: 32px / 2rem
+- **XXL**: 48px / 3rem
+- **XXXL**: 64px / 4rem
+
+### Border Radius
+
+- **Small**: 4px (buttons, small badges)
+- **Medium**: 8px (cards, inputs)
+- **Large**: 12px (modals, large cards)
+- **XLarge**: 16px (hero sections, special cards)
+- **Full**: 50% (circular avatars, pills)
+
+### Shadows
+
+- **Small**: `0 1px 2px rgba(0, 0, 0, 0.05)`
+- **Medium**: `0 2px 4px rgba(0, 0, 0, 0.1)`
+- **Large**: `0 4px 8px rgba(0, 0, 0, 0.15)`
+- **XLarge**: `0 8px 16px rgba(0, 0, 0, 0.2)`
+- **Neon Glow** (for detail accents): `0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 20, 147, 0.3)`
+
+### Buttons
+
+#### Primary Button
+- **Background**: Neon purple-pink gradient or solid
+- **Text**: White (`#FFFFFF`)
+- **Hover**: Lighter shade with glow effect
+- **Padding**: 12px 24px
+- **Border Radius**: 8px
+- **Font Weight**: 600
+
+#### Secondary Button
+- **Background**: Transparent
+- **Border**: 1px solid neon purple-pink
+- **Text**: Neon purple-pink
+- **Hover**: Light purple-pink background
+
+#### Tertiary Button
+- **Background**: Transparent
+- **Text**: Text primary color
+- **Hover**: Light gray background
+
+### Cards
+
+- **Background**: `#FFFFFF` (white)
+- **Border**: 1px solid `#E0E0E0`
+- **Border Radius**: 8px
+- **Shadow**: Medium shadow
+- **Padding**: 16px or 24px
+- **Hover**: Elevate shadow (large shadow)
+
+### Input Fields
+
+- **Background**: `#FFFFFF`
+- **Border**: 1px solid `#E0E0E0`
+- **Border Radius**: 8px
+- **Padding**: 12px 16px
+- **Focus Border**: 2px solid neon purple-pink
+- **Focus Shadow**: Neon glow effect
+- **Placeholder Text**: `#9E9E9E`
+
+### Detail Elements Styling
+
+All detail-related elements should use the neon purple-pink color scheme:
+
+- **Detail Labels**: Neon purple-pink text, font-weight: 600
+- **Detail Values**: Text primary color
+- **Detail Icons**: Neon purple-pink fill/stroke
+- **Detail Badges**: Neon purple-pink background with white text, or white background with neon purple-pink border
+- **Detail Links**: Neon purple-pink, underline on hover
+- **Detail Timestamps**: Neon purple-pink, smaller font size
+- **Detail Metadata**: Neon purple-pink accents on icons/badges
+
+### Responsive Breakpoints
+
+- **Mobile**: < 640px
+- **Tablet**: 640px - 1024px
+- **Desktop**: > 1024px
+- **Wide Desktop**: > 1440px
+
+### Accessibility
+
+- **WCAG 2.1 AA Compliance**: Minimum contrast ratio of 4.5:1 for normal text, 3:1 for large text
+- **Focus Indicators**: Visible focus rings using neon purple-pink
+- **Keyboard Navigation**: All interactive elements must be keyboard accessible
+- **Screen Reader Support**: Proper ARIA labels and semantic HTML
+
+### Icons
+
+- **Library**: Consistent icon library (Material Icons, Font Awesome, or custom)
+- **Size**: 16px, 20px, 24px (standard sizes)
+- **Color**: Inherit from context, or neon purple-pink for detail icons
+- **Stroke Width**: 1.5px or 2px for outlined icons
+
+### Animations & Transitions
+
+- **Duration**: 200ms - 300ms for most interactions
+- **Easing**: `cubic-bezier(0.4, 0, 0.2, 1)` (material design standard)
+- **Hover Transitions**: Smooth color and shadow transitions
+- **Loading States**: Subtle pulse or shimmer effects
+
+---
+
+## Styling Guidelines (Summary)
+
+- **Color Scheme**: Light background (`#FAFAFA`/white) with neon purple-pink (`#FF00FF`/`#FF1493`) for details
+- **Typography**: Clean, readable sans-serif (Inter, Roboto, or system fonts)
+- **Spacing**: Consistent spacing scale (4px, 8px, 16px, 24px, 32px, 48px, 64px)
+- **Responsive**: Mobile-first approach with breakpoints at 640px, 1024px, 1440px
+- **Accessibility**: WCAG 2.1 AA compliance with proper contrast ratios
 - **Icons**: Consistent icon library (Material Icons, Font Awesome, or custom)
 
 ---
