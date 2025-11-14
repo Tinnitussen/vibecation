@@ -3,6 +3,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Suggestions from './pages/Suggestions'
+import Overview from './pages/Overview'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 function ProtectedRoute({ children }) {
@@ -30,6 +31,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Suggestions />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/trips/:tripID/overview" 
+        element={
+          <ProtectedRoute>
+            <Overview />
           </ProtectedRoute>
         } 
       />

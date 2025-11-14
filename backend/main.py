@@ -10,6 +10,8 @@ from datetime import datetime
 import bcrypt
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import secrets
+import string
 from contextlib import asynccontextmanager
 
 # Database connection
@@ -117,6 +119,16 @@ async def hash_password(password: str) -> str:
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+async def generate_invite_code() -> str:
+    """Generate a unique invite code (8 characters, alphanumeric uppercase)."""
+    alphabet = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(secrets.choice(alphabet) for _ in range(8))
+        # Check if code already exists
+        existing = await db.trips.find_one({"inviteCode": code})
+        if not existing:
+            return code
 
 # API Endpoints
 
@@ -275,12 +287,16 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
     # Ensure creator is in members list
     members = list(set([userID] + trip_data.members))
     
+    # Generate unique invite code
+    invite_code = await generate_invite_code()
+    
     trip_doc = {
         "tripID": trip_id,
         "title": trip_data.title,
         "description": trip_data.description or "",
         "ownerID": userID,
         "members": members,
+        "inviteCode": invite_code,
         "status": "planning",
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
@@ -290,6 +306,7 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
     
     return {
         "tripID": trip_id,
+        "inviteCode": invite_code,
         "message": "Trip created successfully"
     }
 
@@ -302,6 +319,73 @@ async def delete_trip(tripID: str):
         raise HTTPException(status_code=404, detail="Trip not found")
     
     return None
+
+@app.get("/trips/{tripID}/invite-code")
+async def get_invite_code(tripID: str, userID: str = Query(...)):
+    """Get invite code for a trip. Only owner can access."""
+    trip = await db.trips.find_one({"tripID": tripID})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Only owner can get the invite code
+    if trip.get("ownerID") != userID:
+        raise HTTPException(status_code=403, detail="Only trip owner can access invite code")
+    
+    invite_code = trip.get("inviteCode")
+    if not invite_code:
+        # Generate one if it doesn't exist (for backward compatibility)
+        invite_code = await generate_invite_code()
+        await db.trips.update_one(
+            {"tripID": tripID},
+            {"$set": {"inviteCode": invite_code, "updatedAt": datetime.utcnow()}}
+        )
+    
+    return {
+        "tripID": tripID,
+        "inviteCode": invite_code
+    }
+
+@app.post("/trips/join")
+async def join_trip_by_invite_code(invite_code: str = Query(..., alias="inviteCode"), userID: str = Query(...)):
+    """Join a trip using an invite code."""
+    if not invite_code:
+        raise HTTPException(status_code=400, detail="Invite code is required")
+    
+    # Find trip by invite code
+    trip = await db.trips.find_one({"inviteCode": invite_code.upper()})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Invalid invite code")
+    
+    # Check if user is already a member
+    if userID in trip.get("members", []):
+        return {
+            "tripID": trip["tripID"],
+            "message": "You are already a member of this trip",
+            "alreadyMember": True
+        }
+    
+    # Add user to members list
+    members = trip.get("members", [])
+    if userID not in members:
+        members.append(userID)
+        await db.trips.update_one(
+            {"tripID": trip["tripID"]},
+            {
+                "$set": {
+                    "members": members,
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
+    
+    return {
+        "tripID": trip["tripID"],
+        "title": trip.get("title", ""),
+        "message": "Successfully joined trip",
+        "alreadyMember": False
+    }
 
 # Mock data for suggestions and polls
 MOCK_SUGGESTIONS = [
