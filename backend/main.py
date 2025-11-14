@@ -590,6 +590,7 @@ async def vote_location(vote_data: dict):
     # Mock implementation - in real app, would update database
     return {"message": "Vote recorded successfully", "vote": vote_data.get("vote")}
 
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
