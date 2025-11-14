@@ -91,9 +91,18 @@ function Overview() {
   return (
     <div className="overview-page">
       <header className="overview-header">
-        <button className="back-button" onClick={() => navigate('/dashboard')}>
-          ← Back
-        </button>
+        <div className="header-top-actions">
+          <button 
+            className="btn-home"
+            onClick={() => navigate('/dashboard')}
+            title="Home"
+          >
+            🏠 Home
+          </button>
+          <button className="back-button" onClick={() => navigate('/dashboard')}>
+            ← Back
+          </button>
+        </div>
         <div className="header-content">
           <h1>{trip.title}</h1>
           {trip.description && <p className="trip-description">{trip.description}</p>}
