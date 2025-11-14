@@ -1,7 +1,7 @@
 [
   {
-    "holiday_name": "Spain Week",
-    "holiday_id": "holiday_001",
+    "trip_name": "Spain Week",
+    "trip_id": "trip_001",
     "activities": [
       {
         "activity_id": "activity_001a",

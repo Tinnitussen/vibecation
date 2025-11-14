@@ -5,7 +5,7 @@ using the Pydantic models.
 
 import json
 from pathlib import Path
-from models import HolidayList, Holiday, Activity, ActivityType
+from models import TripList, Trip, Activity, ActivityType
 
 
 def load_sample_data():
@@ -21,11 +21,11 @@ def load_sample_data():
     with open(sample_file, 'r', encoding='utf-8') as f:
         json_data = json.load(f)
     
-    # Create HolidayList from JSON data
+    # Create TripList from JSON data
     try:
-        holiday_list = HolidayList.from_json_array(json_data)
+        trip_list = TripList.from_json_array(json_data)
         print("✅ Successfully loaded and validated sample data!")
-        return holiday_list
+        return trip_list
     except Exception as e:
         print(f"❌ Error validating data: {e}")
         return None
@@ -37,18 +37,18 @@ def demonstrate_model_usage():
     print("🏖️  Vibecation Pydantic Models Demo\n")
     
     # Load sample data
-    holiday_list = load_sample_data()
-    if not holiday_list:
+    trip_list = load_sample_data()
+    if not trip_list:
         return
     
     # Display basic info
-    print(f"📊 Loaded {len(holiday_list.holidays)} holiday(s)")
+    print(f"📊 Loaded {len(trip_list.trips)} trip(s)")
     
-    for holiday in holiday_list.holidays:
-        print(f"\n🎯 Holiday: {holiday.holiday_name} (ID: {holiday.holiday_id})")
-        print(f"   📅 Total activities: {len(holiday.activities)}")
+    for trip in trip_list.trips:
+        print(f"\n🎯 Trip: {trip.trip_name} (ID: {trip.trip_id})")
+        print(f"   📅 Total activities: {len(trip.activities)}")
         
-        for activity in holiday.activities:
+        for activity in trip.activities:
             print(f"   🎬 {activity.activity_name}")
             print(f"      📍 {activity.start_location} → {activity.end_location}")
             print(f"      🏷️  Type: {activity.activity_type.value}")
@@ -61,7 +61,7 @@ def demonstrate_model_usage():
     
     # Demonstrate JSON serialization
     print(f"\n📤 JSON Export Preview:")
-    json_output = holiday_list.model_dump_json(indent=2)
+    json_output = trip_list.model_dump_json(indent=2)
     print(json_output[:300] + "..." if len(json_output) > 300 else json_output)
     
     # Show model schema
