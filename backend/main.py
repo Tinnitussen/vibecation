@@ -724,31 +724,39 @@ async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(N
         "voteType": "food_cuisine"
     }).to_list(length=1000)
     
-    # Count votes per cuisine
+    # Count votes per cuisine (upvotes and downvotes)
     vote_counts = {}
-    user_selected = set()
+    user_votes = {}
     
     for vote in cuisine_votes:
-        cuisine_name = vote.get("voteValue")  # For cuisine, voteValue stores the cuisine name
+        cuisine_name = vote.get("optionID") or vote.get("voteValue")  # optionID stores the cuisine name
         
         if cuisine_name:
+            # Count upvotes and downvotes
             if cuisine_name not in vote_counts:
-                vote_counts[cuisine_name] = 0
-            vote_counts[cuisine_name] += 1
+                vote_counts[cuisine_name] = {"upvotes": 0, "downvotes": 0}
             
-            # Track user's selections if userID provided
+            if vote.get("vote", True):  # True means upvote (selected)
+                vote_counts[cuisine_name]["upvotes"] += 1
+            else:
+                vote_counts[cuisine_name]["downvotes"] += 1
+            
+            # Track user's vote if userID provided
             if userID and vote["userID"] == userID:
-                user_selected.add(cuisine_name)
+                user_votes[cuisine_name] = vote.get("vote", True)
     
     # Start with mock cuisines and enrich with real vote data
     cuisines = []
     for mock_cuisine in MOCK_CUISINES:
         cuisine_name = mock_cuisine["name"]
         
+        counts = vote_counts.get(cuisine_name, {"upvotes": 0, "downvotes": 0})
+        
         cuisine = {
             **mock_cuisine,
-            "votes": vote_counts.get(cuisine_name, 0),
-            "selected": cuisine_name in user_selected
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "user_vote": user_votes.get(cuisine_name, None)
         }
         cuisines.append(cuisine)
     
@@ -758,50 +766,100 @@ async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(N
 @app.post("/polls/vote/food_cuisine")
 async def vote_food_cuisine(vote_data: dict):
     """
-    Submit cuisine votes. Replaces all previous cuisine votes for this user.
+    Vote on a cuisine. Works like activity/location votes - upvote selects, downvote deselects.
+    Ensures one vote per user per cuisine. If user already voted, updates the vote. If same vote is clicked, removes it.
     """
     if db is None:
         raise HTTPException(status_code=500, detail="Database not connected")
     
     tripID = vote_data.get("tripID")
+    cuisineName = vote_data.get("cuisineName")  # Changed from selectedCuisines array
     userID = vote_data.get("userID")
-    selectedCuisines = vote_data.get("selectedCuisines", [])
+    vote = vote_data.get("vote")  # True for upvote (select), False for downvote (deselect)
     
-    if not all([tripID, userID]):
-        raise HTTPException(status_code=400, detail="Missing required fields: tripID, userID")
+    if not all([tripID, cuisineName, userID, vote is not None]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, cuisineName, userID, vote")
     
     votes_collection = db.votes
+    optionID = cuisineName
+    voteType = "food_cuisine"
     
-    # Remove all existing cuisine votes for this user in this trip
-    await votes_collection.delete_many({
+    # Check if user already voted on this cuisine
+    vote_query = {
         "tripID": tripID,
         "userID": userID,
-        "voteType": "food_cuisine"
-    })
-    
-    # Insert new votes for selected cuisines
-    if selectedCuisines:
-        vote_docs = []
-        for cuisine_name in selectedCuisines:
-            vote_doc = {
-                "tripID": tripID,
-                "userID": userID,
-                "optionID": cuisine_name,  # Using cuisine name as optionID
-                "voteType": "food_cuisine",
-                "vote": True,  # All cuisine selections are positive votes
-                "voteValue": cuisine_name,  # Store cuisine name in voteValue
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow()
-            }
-            vote_docs.append(vote_doc)
-        
-        if vote_docs:
-            await votes_collection.insert_many(vote_docs)
-    
-    return {
-        "message": "Cuisine votes submitted successfully",
-        "selectedCuisines": selectedCuisines
+        "optionID": optionID,
+        "voteType": voteType
     }
+    
+    existing_vote = await votes_collection.find_one(vote_query)
+    
+    if existing_vote:
+        # User already voted - check if it's the same vote
+        if existing_vote["vote"] == vote:
+            # Same vote clicked - remove the vote (toggle off)
+            await votes_collection.delete_one({"_id": existing_vote["_id"]})
+            return {
+                "message": "Vote removed",
+                "vote": None,
+                "action": "removed"
+            }
+        else:
+            # Different vote - update the existing vote
+            await votes_collection.update_one(
+                {"_id": existing_vote["_id"]},
+                {
+                    "$set": {
+                        "vote": vote,
+                        "updatedAt": datetime.utcnow()
+                    }
+                }
+            )
+            return {
+                "message": "Vote updated successfully",
+                "vote": vote,
+                "action": "updated"
+            }
+    else:
+        # New vote - create it (works for both upvote and downvote, same as activities/locations)
+        vote_doc = {
+            "tripID": tripID,
+            "userID": userID,
+            "optionID": optionID,
+            "voteType": voteType,
+            "vote": vote,
+            "voteValue": cuisineName,  # Store cuisine name in voteValue
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        
+        try:
+            await votes_collection.insert_one(vote_doc)
+            return {
+                "message": "Vote recorded successfully",
+                "vote": vote,
+                "action": "created"
+            }
+        except Exception as e:
+            # Handle duplicate key error
+            if "duplicate" in str(e).lower() or "E11000" in str(e):
+                existing = await votes_collection.find_one(vote_query)
+                if existing:
+                    await votes_collection.update_one(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "vote": vote,
+                                "updatedAt": datetime.utcnow()
+                            }
+                        }
+                    )
+                    return {
+                        "message": "Vote updated successfully",
+                        "vote": vote,
+                        "action": "updated"
+                    }
+            raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
 
 @app.post("/polls/vote/activity")
 async def vote_activity(vote_data: dict):
