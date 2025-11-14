@@ -249,6 +249,13 @@ function Suggestions() {
       <header className="suggestions-header">
         <div className="header-content">
           <div className="header-left">
+            <button 
+              className="btn-home"
+              onClick={() => navigate('/dashboard')}
+              title="Home"
+            >
+              🏠
+            </button>
             <h1>{tripInfo?.title || 'Trip Suggestions'}</h1>
             <p className="participant-count">
               {participants.length} participant{participants.length !== 1 ? 's' : ''}

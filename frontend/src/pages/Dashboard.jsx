@@ -152,7 +152,16 @@ function Dashboard() {
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1 className="logo">Vibecation</h1>
+          <div className="header-left">
+            <button 
+              className="btn-home"
+              onClick={() => navigate('/dashboard')}
+              title="Home"
+            >
+              🏠
+            </button>
+            <h1 className="logo">Vibecation</h1>
+          </div>
           <div className="user-menu">
             <span className="user-name">{user?.name || 'User'}</span>
             <button onClick={logout} className="btn-logout">Logout</button>

@@ -39,11 +39,41 @@
   align-items: center;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .header-left h1 {
   font-size: 32px;
   font-weight: 700;
   color: #1A1A1A;
   margin-bottom: 4px;
+}
+
+.btn-home {
+  background: transparent;
+  border: 2px solid #FF00FF;
+  color: #FF00FF;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.btn-home:hover {
+  background: linear-gradient(135deg, #FF00FF 0%, #FF1493 100%);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
 }
 
 .participant-count {
