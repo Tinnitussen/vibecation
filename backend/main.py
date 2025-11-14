@@ -11,6 +11,8 @@ import bcrypt
 import json
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import secrets
+import string
 from contextlib import asynccontextmanager
 from brainstormchat import brainstorm_chat
 
@@ -119,6 +121,16 @@ async def hash_password(password: str) -> str:
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+async def generate_invite_code() -> str:
+    """Generate a unique invite code (8 characters, alphanumeric uppercase)."""
+    alphabet = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(secrets.choice(alphabet) for _ in range(8))
+        # Check if code already exists
+        existing = await db.trips.find_one({"inviteCode": code})
+        if not existing:
+            return code
 
 # API Endpoints
 
@@ -277,12 +289,16 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
     # Ensure creator is in members list
     members = list(set([userID] + trip_data.members))
     
+    # Generate unique invite code
+    invite_code = await generate_invite_code()
+    
     trip_doc = {
         "tripID": trip_id,
         "title": trip_data.title,
         "description": trip_data.description or "",
         "ownerID": userID,
         "members": members,
+        "inviteCode": invite_code,
         "status": "planning",
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
@@ -292,6 +308,7 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
     
     return {
         "tripID": trip_id,
+        "inviteCode": invite_code,
         "message": "Trip created successfully"
     }
 
@@ -304,6 +321,73 @@ async def delete_trip(tripID: str):
         raise HTTPException(status_code=404, detail="Trip not found")
     
     return None
+
+@app.get("/trips/{tripID}/invite-code")
+async def get_invite_code(tripID: str, userID: str = Query(...)):
+    """Get invite code for a trip. Only owner can access."""
+    trip = await db.trips.find_one({"tripID": tripID})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Only owner can get the invite code
+    if trip.get("ownerID") != userID:
+        raise HTTPException(status_code=403, detail="Only trip owner can access invite code")
+    
+    invite_code = trip.get("inviteCode")
+    if not invite_code:
+        # Generate one if it doesn't exist (for backward compatibility)
+        invite_code = await generate_invite_code()
+        await db.trips.update_one(
+            {"tripID": tripID},
+            {"$set": {"inviteCode": invite_code, "updatedAt": datetime.utcnow()}}
+        )
+    
+    return {
+        "tripID": tripID,
+        "inviteCode": invite_code
+    }
+
+@app.post("/trips/join")
+async def join_trip_by_invite_code(invite_code: str = Query(..., alias="inviteCode"), userID: str = Query(...)):
+    """Join a trip using an invite code."""
+    if not invite_code:
+        raise HTTPException(status_code=400, detail="Invite code is required")
+    
+    # Find trip by invite code
+    trip = await db.trips.find_one({"inviteCode": invite_code.upper()})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Invalid invite code")
+    
+    # Check if user is already a member
+    if userID in trip.get("members", []):
+        return {
+            "tripID": trip["tripID"],
+            "message": "You are already a member of this trip",
+            "alreadyMember": True
+        }
+    
+    # Add user to members list
+    members = trip.get("members", [])
+    if userID not in members:
+        members.append(userID)
+        await db.trips.update_one(
+            {"tripID": trip["tripID"]},
+            {
+                "$set": {
+                    "members": members,
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
+    
+    return {
+        "tripID": trip["tripID"],
+        "title": trip.get("title", ""),
+        "message": "Successfully joined trip",
+        "alreadyMember": False
+    }
 
 # Mock data for suggestions and polls
 MOCK_SUGGESTIONS = [
@@ -538,13 +622,13 @@ MOCK_VIGOR_PREFERENCES = [
 ]
 
 MOCK_CUISINES = [
-    {"name": "Spanish", "votes": 5, "selected": False},
-    {"name": "Tapas", "votes": 4, "selected": False},
-    {"name": "Mediterranean", "votes": 3, "selected": False},
-    {"name": "Seafood", "votes": 2, "selected": False},
-    {"name": "Catalan", "votes": 2, "selected": False},
-    {"name": "Italian", "votes": 1, "selected": False},
-    {"name": "French", "votes": 1, "selected": False}
+    {"name": "Spanish", "votes": 0, "selected": False},
+    {"name": "Tapas", "votes": 0, "selected": False},
+    {"name": "Mediterranean", "votes": 0, "selected": False},
+    {"name": "Seafood", "votes": 0, "selected": False},
+    {"name": "Catalan", "votes": 0, "selected": False},
+    {"name": "Italian", "votes": 0, "selected": False},
+    {"name": "French", "votes": 0, "selected": False}
 ]
 
 @app.get("/get_all_trip_suggestions")
@@ -557,10 +641,60 @@ async def get_all_trip_suggestions(tripID: str = Query(...)):
     }
 
 @app.get("/polls/get/activity")
-async def get_activity_poll(tripID: str = Query(...)):
-    """Get activity poll (mock data)."""
-    # Return mock activities regardless of tripID
-    return {"activities": MOCK_ACTIVITIES}
+async def get_activity_poll(tripID: str = Query(...), userID: str = Query(None)):
+    """
+    Get activity poll with real vote counts from database.
+    If userID is provided, also includes the user's vote for each activity.
+    """
+    if db is None:
+        # Fallback to mock data if database not connected
+        return {"activities": MOCK_ACTIVITIES}
+    
+    votes_collection = db.votes
+    
+    # Get all votes for activities in this trip
+    activity_votes = await votes_collection.find({
+        "tripID": tripID,
+        "voteType": "activity"
+    }).to_list(length=1000)
+    
+    # Aggregate votes by activityID
+    vote_counts = {}
+    user_votes = {}
+    
+    for vote in activity_votes:
+        activity_id = vote["optionID"]
+        
+        # Count upvotes and downvotes
+        if activity_id not in vote_counts:
+            vote_counts[activity_id] = {"upvotes": 0, "downvotes": 0}
+        
+        if vote["vote"]:
+            vote_counts[activity_id]["upvotes"] += 1
+        else:
+            vote_counts[activity_id]["downvotes"] += 1
+        
+        # Track user's vote if userID provided
+        if userID and vote["userID"] == userID:
+            user_votes[activity_id] = vote["vote"]
+    
+    # Start with mock activities and enrich with real vote data
+    activities = []
+    for mock_activity in MOCK_ACTIVITIES:
+        activity_id = mock_activity["activity_id"]
+        
+        # Get real vote counts from database
+        counts = vote_counts.get(activity_id, {"upvotes": 0, "downvotes": 0})
+        
+        activity = {
+            **mock_activity,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "user_vote": user_votes.get(activity_id, None)
+        }
+        activities.append(activity)
+    
+    return {"activities": activities}
 
 @app.get("/polls/get/location")
 async def get_location_poll(tripID: str = Query(...)):
@@ -575,22 +709,355 @@ async def get_activity_vigor_poll(tripID: str = Query(...)):
     return {"vigor_preferences": MOCK_VIGOR_PREFERENCES}
 
 @app.get("/polls/get/food_cuisines")
-async def get_food_cuisines_poll(tripID: str = Query(...)):
-    """Get food cuisine poll (mock data)."""
-    # Return mock cuisines regardless of tripID
-    return {"cuisines": MOCK_CUISINES}
+async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(None)):
+    """
+    Get food cuisine poll with real vote counts from database.
+    If userID is provided, also includes the user's selected cuisines.
+    """
+    if db is None:
+        # Fallback to mock data if database not connected
+        return {"cuisines": MOCK_CUISINES}
+    
+    votes_collection = db.votes
+    
+    # Get all cuisine votes for this trip
+    cuisine_votes = await votes_collection.find({
+        "tripID": tripID,
+        "voteType": "food_cuisine"
+    }).to_list(length=1000)
+    
+    # Count votes per cuisine (upvotes and downvotes)
+    vote_counts = {}
+    user_votes = {}
+    
+    for vote in cuisine_votes:
+        cuisine_name = vote.get("optionID") or vote.get("voteValue")  # optionID stores the cuisine name
+        
+        if cuisine_name:
+            # Count upvotes and downvotes
+            if cuisine_name not in vote_counts:
+                vote_counts[cuisine_name] = {"upvotes": 0, "downvotes": 0}
+            
+            if vote.get("vote", True):  # True means upvote (selected)
+                vote_counts[cuisine_name]["upvotes"] += 1
+            else:
+                vote_counts[cuisine_name]["downvotes"] += 1
+            
+            # Track user's vote if userID provided
+            if userID and vote["userID"] == userID:
+                user_votes[cuisine_name] = vote.get("vote", True)
+    
+    # Start with mock cuisines and enrich with real vote data
+    cuisines = []
+    for mock_cuisine in MOCK_CUISINES:
+        cuisine_name = mock_cuisine["name"]
+        
+        counts = vote_counts.get(cuisine_name, {"upvotes": 0, "downvotes": 0})
+        
+        cuisine = {
+            **mock_cuisine,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "user_vote": user_votes.get(cuisine_name, None)
+        }
+        cuisines.append(cuisine)
+    
+    return {"cuisines": cuisines}
+
+
+@app.post("/polls/vote/food_cuisine")
+async def vote_food_cuisine(vote_data: dict):
+    """
+    Vote on a cuisine. Works like activity/location votes - upvote selects, downvote deselects.
+    Ensures one vote per user per cuisine. If user already voted, updates the vote. If same vote is clicked, removes it.
+    """
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = vote_data.get("tripID")
+    cuisineName = vote_data.get("cuisineName")  # Changed from selectedCuisines array
+    userID = vote_data.get("userID")
+    vote = vote_data.get("vote")  # True for upvote (select), False for downvote (deselect)
+    
+    if not all([tripID, cuisineName, userID, vote is not None]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, cuisineName, userID, vote")
+    
+    votes_collection = db.votes
+    optionID = cuisineName
+    voteType = "food_cuisine"
+    
+    # Check if user already voted on this cuisine
+    vote_query = {
+        "tripID": tripID,
+        "userID": userID,
+        "optionID": optionID,
+        "voteType": voteType
+    }
+    
+    existing_vote = await votes_collection.find_one(vote_query)
+    
+    if existing_vote:
+        # User already voted - check if it's the same vote
+        if existing_vote["vote"] == vote:
+            # Same vote clicked - remove the vote (toggle off)
+            await votes_collection.delete_one({"_id": existing_vote["_id"]})
+            return {
+                "message": "Vote removed",
+                "vote": None,
+                "action": "removed"
+            }
+        else:
+            # Different vote - update the existing vote
+            await votes_collection.update_one(
+                {"_id": existing_vote["_id"]},
+                {
+                    "$set": {
+                        "vote": vote,
+                        "updatedAt": datetime.utcnow()
+                    }
+                }
+            )
+            return {
+                "message": "Vote updated successfully",
+                "vote": vote,
+                "action": "updated"
+            }
+    else:
+        # New vote - create it (works for both upvote and downvote, same as activities/locations)
+        vote_doc = {
+            "tripID": tripID,
+            "userID": userID,
+            "optionID": optionID,
+            "voteType": voteType,
+            "vote": vote,
+            "voteValue": cuisineName,  # Store cuisine name in voteValue
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        
+        try:
+            await votes_collection.insert_one(vote_doc)
+            return {
+                "message": "Vote recorded successfully",
+                "vote": vote,
+                "action": "created"
+            }
+        except Exception as e:
+            # Handle duplicate key error
+            if "duplicate" in str(e).lower() or "E11000" in str(e):
+                existing = await votes_collection.find_one(vote_query)
+                if existing:
+                    await votes_collection.update_one(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "vote": vote,
+                                "updatedAt": datetime.utcnow()
+                            }
+                        }
+                    )
+                    return {
+                        "message": "Vote updated successfully",
+                        "vote": vote,
+                        "action": "updated"
+                    }
+            raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
 
 @app.post("/polls/vote/activity")
 async def vote_activity(vote_data: dict):
-    """Vote on an activity (mock - just returns success)."""
-    # Mock implementation - in real app, would update database
-    return {"message": "Vote recorded successfully", "vote": vote_data.get("vote")}
+    """
+    Vote on an activity. Ensures one vote per user per activity.
+    If user already voted, updates the vote. If same vote is clicked, removes it.
+    """
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = vote_data.get("tripID")
+    activityID = vote_data.get("activityID")
+    userID = vote_data.get("userID")
+    vote = vote_data.get("vote")
+    
+    if not all([tripID, activityID, userID, vote is not None]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, activityID, userID, vote")
+    
+    votes_collection = db.votes
+    optionID = activityID
+    voteType = "activity"
+    
+    # Check if user already voted on this activity
+    vote_query = {
+        "tripID": tripID,
+        "userID": userID,
+        "optionID": optionID,
+        "voteType": voteType
+    }
+    
+    existing_vote = await votes_collection.find_one(vote_query)
+    
+    if existing_vote:
+        # User already voted - check if it's the same vote
+        if existing_vote["vote"] == vote:
+            # Same vote clicked - remove the vote (toggle off)
+            await votes_collection.delete_one({"_id": existing_vote["_id"]})
+            return {
+                "message": "Vote removed",
+                "vote": None,
+                "action": "removed"
+            }
+        else:
+            # Different vote - update the existing vote
+            await votes_collection.update_one(
+                {"_id": existing_vote["_id"]},
+                {
+                    "$set": {
+                        "vote": vote,
+                        "updatedAt": datetime.utcnow()
+                    }
+                }
+            )
+            return {
+                "message": "Vote updated successfully",
+                "vote": vote,
+                "action": "updated"
+            }
+    else:
+        # New vote - create it
+        vote_doc = {
+            "tripID": tripID,
+            "userID": userID,
+            "optionID": optionID,
+            "voteType": voteType,
+            "vote": vote,
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        
+        try:
+            await votes_collection.insert_one(vote_doc)
+            return {
+                "message": "Vote recorded successfully",
+                "vote": vote,
+                "action": "created"
+            }
+        except Exception as e:
+            # Handle duplicate key error (shouldn't happen, but just in case)
+            if "duplicate" in str(e).lower() or "E11000" in str(e):
+                # Vote was created between check and insert - try to update instead
+                existing = await votes_collection.find_one(vote_query)
+                if existing:
+                    await votes_collection.update_one(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "vote": vote,
+                                "updatedAt": datetime.utcnow()
+                            }
+                        }
+                    )
+                    return {
+                        "message": "Vote updated successfully",
+                        "vote": vote,
+                        "action": "updated"
+                    }
+            raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
+
 
 @app.post("/polls/vote/location")
 async def vote_location(vote_data: dict):
-    """Vote on a location (mock - just returns success)."""
-    # Mock implementation - in real app, would update database
-    return {"message": "Vote recorded successfully", "vote": vote_data.get("vote")}
+    """
+    Vote on a location. Ensures one vote per user per location.
+    If user already voted, updates the vote. If same vote is clicked, removes it.
+    """
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = vote_data.get("tripID")
+    locationID = vote_data.get("locationID")
+    userID = vote_data.get("userID")
+    vote = vote_data.get("vote")
+    
+    if not all([tripID, locationID, userID, vote is not None]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, locationID, userID, vote")
+    
+    votes_collection = db.votes
+    optionID = locationID
+    voteType = "location"
+    
+    # Check if user already voted on this location
+    vote_query = {
+        "tripID": tripID,
+        "userID": userID,
+        "optionID": optionID,
+        "voteType": voteType
+    }
+    
+    existing_vote = await votes_collection.find_one(vote_query)
+    
+    if existing_vote:
+        # User already voted - check if it's the same vote
+        if existing_vote["vote"] == vote:
+            # Same vote clicked - remove the vote (toggle off)
+            await votes_collection.delete_one({"_id": existing_vote["_id"]})
+            return {
+                "message": "Vote removed",
+                "vote": None,
+                "action": "removed"
+            }
+        else:
+            # Different vote - update the existing vote
+            await votes_collection.update_one(
+                {"_id": existing_vote["_id"]},
+                {
+                    "$set": {
+                        "vote": vote,
+                        "updatedAt": datetime.utcnow()
+                    }
+                }
+            )
+            return {
+                "message": "Vote updated successfully",
+                "vote": vote,
+                "action": "updated"
+            }
+    else:
+        # New vote - create it
+        vote_doc = {
+            "tripID": tripID,
+            "userID": userID,
+            "optionID": optionID,
+            "voteType": voteType,
+            "vote": vote,
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        
+        try:
+            await votes_collection.insert_one(vote_doc)
+            return {
+                "message": "Vote recorded successfully",
+                "vote": vote,
+                "action": "created"
+            }
+        except Exception as e:
+            # Handle duplicate key error
+            if "duplicate" in str(e).lower() or "E11000" in str(e):
+                existing = await votes_collection.find_one(vote_query)
+                if existing:
+                    await votes_collection.update_one(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "vote": vote,
+                                "updatedAt": datetime.utcnow()
+                            }
+                        }
+                    )
+                    return {
+                        "message": "Vote updated successfully",
+                        "vote": vote,
+                        "action": "updated"
+                    }
+            raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
 
 # Mock data for brainstorm
 MOCK_DAYS = [

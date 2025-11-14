@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
 import './Suggestions.css'
 
 function Suggestions() {
   const { tripID } = useParams()
   const { userID } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('activities')
   const [loading, setLoading] = useState(true)
@@ -62,7 +64,7 @@ function Suggestions() {
   const loadActivityPoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/activity', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setActivities(response.data.activities)
     } catch (err) {
@@ -95,11 +97,84 @@ function Suggestions() {
   const loadCuisinePoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/food_cuisines', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setCuisines(response.data.cuisines)
     } catch (err) {
       console.error('Failed to load cuisine poll:', err)
+    }
+  }
+
+  const handleCuisineVote = async (cuisineName, vote) => {
+    try {
+      const response = await apiClient.post('/polls/vote/food_cuisine', {
+        tripID,
+        cuisineName,
+        userID,
+        vote
+      })
+      
+      const { action, vote: returnedVote } = response.data
+      const previousCuisine = cuisines.find(c => c.name === cuisineName)
+      const previousVote = previousCuisine?.user_vote
+      
+      // Update local state based on action
+      setCuisines(cuisines.map(cuisine => {
+        if (cuisine.name === cuisineName) {
+          let newUpvotes = cuisine.upvotes || 0
+          let newDownvotes = cuisine.downvotes || 0
+          
+          if (action === 'removed') {
+            // Vote was removed - decrement the previous vote count
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            return {
+              ...cuisine,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: null
+            }
+          } else if (action === 'updated') {
+            // Vote was changed - decrement old vote, increment new vote
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...cuisine,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
+          } else if (action === 'created') {
+            // New vote - increment the appropriate count
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...cuisine,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
+          }
+        }
+        return cuisine
+      }))
+    } catch (err) {
+      console.error('Failed to vote:', err)
+      toast.error('Failed to vote. Please try again.')
     }
   }
 
@@ -111,49 +186,86 @@ function Suggestions() {
         userID,
         vote
       })
-      // Update local state
-      setActivities(activities.map(act => {
-        if (act.activity_id === activityID) {
-          const newUpvotes = vote ? act.upvotes + 1 : act.upvotes
-          const newDownvotes = !vote ? act.downvotes + 1 : act.downvotes
-          return {
-            ...act,
-            upvotes: newUpvotes,
-            downvotes: newDownvotes,
-            user_vote: vote
-          }
-        }
-        return act
-      }))
+      
+      // Reload activities to get accurate vote counts from database
+      // This ensures we always have the correct data
+      await loadActivityPoll()
     } catch (err) {
       console.error('Failed to vote:', err)
+      toast.error('Failed to vote. Please try again.')
     }
   }
 
   const handleLocationVote = async (locationID, vote) => {
     try {
-      await apiClient.post('/polls/vote/location', {
+      const response = await apiClient.post('/polls/vote/location', {
         tripID,
         locationID,
         userID,
         vote
       })
-      // Update local state
+      
+      const { action, vote: returnedVote } = response.data
+      const previousLocation = locations.find(loc => loc.location_id === locationID)
+      const previousVote = previousLocation?.user_vote
+      
+      // Update local state based on action
       setLocations(locations.map(loc => {
         if (loc.location_id === locationID) {
-          const newUpvotes = vote ? loc.upvotes + 1 : loc.upvotes
-          const newDownvotes = !vote ? loc.downvotes + 1 : loc.downvotes
-          return {
-            ...loc,
-            upvotes: newUpvotes,
-            downvotes: newDownvotes,
-            user_vote: vote
+          let newUpvotes = loc.upvotes || 0
+          let newDownvotes = loc.downvotes || 0
+          
+          if (action === 'removed') {
+            // Vote was removed - decrement the previous vote count
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: null
+            }
+          } else if (action === 'updated') {
+            // Vote was changed - decrement old vote, increment new vote
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
+          } else if (action === 'created') {
+            // New vote - increment the appropriate count
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
           }
         }
         return loc
       }))
     } catch (err) {
       console.error('Failed to vote:', err)
+      toast.error('Failed to vote. Please try again.')
     }
   }
 
@@ -194,6 +306,13 @@ function Suggestions() {
       <header className="suggestions-header">
         <div className="header-content">
           <div className="header-left">
+            <button 
+              className="btn-home"
+              onClick={() => navigate('/dashboard')}
+              title="Home"
+            >
+              🏠
+            </button>
             <h1>{tripInfo?.title || 'Trip Suggestions'}</h1>
             <p className="participant-count">
               {participants.length} participant{participants.length !== 1 ? 's' : ''}
@@ -310,6 +429,7 @@ function Suggestions() {
             {activeTab === 'cuisines' && (
               <FoodCuisinePoll
                 cuisines={cuisines}
+                onVote={handleCuisineVote}
               />
             )}
           </div>
@@ -365,71 +485,85 @@ function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalAc
   )
 }
 
-function ActivityPoll({ activities, onVote, getActivityTypeColor }) {
+// Unified poll component for activities, locations, and cuisines
+function UnifiedPoll({ items, onVote, getItemId, getItemName, getItemHeader, getItemDescription, getItemExtra }) {
   return (
     <div className="poll-list">
-      {activities.map((activity) => (
-        <div key={activity.activity_id} className="poll-item">
-          <div className="poll-item-header">
-            <span
-              className="activity-type-badge"
-              style={{ backgroundColor: getActivityTypeColor(activity.type) }}
-            >
-              {activity.type}
-            </span>
-            <h3>{activity.activity_name}</h3>
+      {items.map((item) => {
+        const itemId = getItemId(item)
+        const itemName = getItemName(item)
+        const header = getItemHeader(item)
+        const description = getItemDescription(item)
+        const extra = getItemExtra(item)
+        
+        return (
+          <div key={itemId} className="poll-item">
+            <div className="poll-item-header">
+              {header}
+            </div>
+            {description && <p className="poll-item-description">{description}</p>}
+            {extra && <p className="poll-item-location">{extra}</p>}
+            <div className="poll-item-actions">
+              <button
+                className={`vote-btn upvote ${item.user_vote === true ? 'active' : ''}`}
+                onClick={() => onVote(itemId, true)}
+              >
+                ↑ {item.upvotes || 0}
+              </button>
+              <button
+                className={`vote-btn downvote ${item.user_vote === false ? 'active' : ''}`}
+                onClick={() => onVote(itemId, false)}
+              >
+                ↓ {item.downvotes || 0}
+              </button>
+            </div>
           </div>
-          <p className="poll-item-description">{activity.description}</p>
-          <p className="poll-item-location">📍 {activity.location}</p>
-          <div className="poll-item-actions">
-            <button
-              className={`vote-btn upvote ${activity.user_vote === true ? 'active' : ''}`}
-              onClick={() => onVote(activity.activity_id, true)}
-            >
-              ↑ {activity.upvotes}
-            </button>
-            <button
-              className={`vote-btn downvote ${activity.user_vote === false ? 'active' : ''}`}
-              onClick={() => onVote(activity.activity_id, false)}
-            >
-              ↓ {activity.downvotes}
-            </button>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
+  )
+}
+
+function ActivityPoll({ activities, onVote, getActivityTypeColor }) {
+  return (
+    <UnifiedPoll
+      items={activities}
+      onVote={onVote}
+      getItemId={(item) => item.activity_id}
+      getItemName={(item) => item.activity_name}
+      getItemHeader={(item) => (
+        <>
+          <span
+            className="activity-type-badge"
+            style={{ backgroundColor: getActivityTypeColor(item.type) }}
+          >
+            {item.type}
+          </span>
+          <h3>{item.activity_name}</h3>
+        </>
+      )}
+      getItemDescription={(item) => item.description}
+      getItemExtra={(item) => `📍 ${item.location}`}
+    />
   )
 }
 
 function LocationPoll({ locations, onVote }) {
   return (
-    <div className="poll-list">
-      {locations.map((location) => (
-        <div key={location.location_id} className="poll-item">
-          <div className="poll-item-header">
-            <h3>{location.name}</h3>
-            <span className="location-type">{location.type}</span>
-          </div>
-          <p className="poll-item-location">
-            📍 {location.lat.toFixed(4)}, {location.lon.toFixed(4)}
-          </p>
-          <div className="poll-item-actions">
-            <button
-              className={`vote-btn upvote ${location.user_vote === true ? 'active' : ''}`}
-              onClick={() => onVote(location.location_id, true)}
-            >
-              ↑ {location.upvotes}
-            </button>
-            <button
-              className={`vote-btn downvote ${location.user_vote === false ? 'active' : ''}`}
-              onClick={() => onVote(location.location_id, false)}
-            >
-              ↓ {location.downvotes}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+    <UnifiedPoll
+      items={locations}
+      onVote={onVote}
+      getItemId={(item) => item.location_id}
+      getItemName={(item) => item.name}
+      getItemHeader={(item) => (
+        <>
+          <h3>{item.name}</h3>
+          <span className="location-type">{item.type}</span>
+        </>
+      )}
+      getItemDescription={() => null}
+      getItemExtra={(item) => `📍 ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}`}
+    />
   )
 }
 
@@ -479,33 +613,17 @@ function ActivityVigorPoll({ preferences }) {
   )
 }
 
-function FoodCuisinePoll({ cuisines }) {
-  const [selectedCuisines, setSelectedCuisines] = useState([])
-
-  const toggleCuisine = (cuisineName) => {
-    setSelectedCuisines(prev =>
-      prev.includes(cuisineName)
-        ? prev.filter(c => c !== cuisineName)
-        : [...prev, cuisineName]
-    )
-  }
-
+function FoodCuisinePoll({ cuisines, onVote }) {
   return (
-    <div className="poll-list">
-      {cuisines.map((cuisine, idx) => (
-        <div key={idx} className="poll-item cuisine-item">
-          <label className="cuisine-checkbox">
-            <input
-              type="checkbox"
-              checked={selectedCuisines.includes(cuisine.name)}
-              onChange={() => toggleCuisine(cuisine.name)}
-            />
-            <span className="cuisine-name">{cuisine.name}</span>
-            <span className="cuisine-votes">{cuisine.votes} votes</span>
-          </label>
-        </div>
-      ))}
-    </div>
+    <UnifiedPoll
+      items={cuisines}
+      onVote={onVote}
+      getItemId={(item) => item.name}
+      getItemName={(item) => item.name}
+      getItemHeader={(item) => <h3>{item.name}</h3>}
+      getItemDescription={() => null}
+      getItemExtra={() => null}
+    />
   )
 }
 

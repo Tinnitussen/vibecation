@@ -40,9 +40,12 @@ db.polls.createIndex({ "tripID": 1, "pollType": 1 });
 db.polls.createIndex({ "tripID": 1, "status": 1 });
 
 // Create indexes for votes collection
-db.votes.createIndex({ "voteID": 1 }, { unique: true });
-db.votes.createIndex({ "pollID": 1, "userID": 1, "optionID": 1 }, { unique: true });
+// Unique index to prevent duplicate votes: one vote per user per option (activity/location)
+db.votes.createIndex({ "tripID": 1, "userID": 1, "optionID": 1, "voteType": 1 }, { unique: true });
 db.votes.createIndex({ "tripID": 1, "userID": 1 });
+db.votes.createIndex({ "tripID": 1, "optionID": 1 });
+db.votes.createIndex({ "userID": 1 });
+db.votes.createIndex({ "createdAt": -1 });
 
 // Create indexes for locations collection
 db.locations.createIndex({ "locationID": 1 }, { unique: true });

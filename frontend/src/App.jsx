@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Suggestions from './pages/Suggestions'
 import Brainstorm from './pages/Brainstorm'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
 
 function ProtectedRoute({ children }) {
   const { userID } = useAuth()
@@ -49,11 +50,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </ToastProvider>
   )
 }
 
