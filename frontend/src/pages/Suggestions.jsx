@@ -62,7 +62,7 @@ function Suggestions() {
   const loadActivityPoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/activity', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setActivities(response.data.activities)
     } catch (err) {
@@ -111,49 +111,86 @@ function Suggestions() {
         userID,
         vote
       })
-      // Update local state
-      setActivities(activities.map(act => {
-        if (act.activity_id === activityID) {
-          const newUpvotes = vote ? act.upvotes + 1 : act.upvotes
-          const newDownvotes = !vote ? act.downvotes + 1 : act.downvotes
-          return {
-            ...act,
-            upvotes: newUpvotes,
-            downvotes: newDownvotes,
-            user_vote: vote
-          }
-        }
-        return act
-      }))
+      
+      // Reload activities to get accurate vote counts from database
+      // This ensures we always have the correct data
+      await loadActivityPoll()
     } catch (err) {
       console.error('Failed to vote:', err)
+      alert('Failed to vote. Please try again.')
     }
   }
 
   const handleLocationVote = async (locationID, vote) => {
     try {
-      await apiClient.post('/polls/vote/location', {
+      const response = await apiClient.post('/polls/vote/location', {
         tripID,
         locationID,
         userID,
         vote
       })
-      // Update local state
+      
+      const { action, vote: returnedVote } = response.data
+      const previousLocation = locations.find(loc => loc.location_id === locationID)
+      const previousVote = previousLocation?.user_vote
+      
+      // Update local state based on action
       setLocations(locations.map(loc => {
         if (loc.location_id === locationID) {
-          const newUpvotes = vote ? loc.upvotes + 1 : loc.upvotes
-          const newDownvotes = !vote ? loc.downvotes + 1 : loc.downvotes
-          return {
-            ...loc,
-            upvotes: newUpvotes,
-            downvotes: newDownvotes,
-            user_vote: vote
+          let newUpvotes = loc.upvotes || 0
+          let newDownvotes = loc.downvotes || 0
+          
+          if (action === 'removed') {
+            // Vote was removed - decrement the previous vote count
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: null
+            }
+          } else if (action === 'updated') {
+            // Vote was changed - decrement old vote, increment new vote
+            if (previousVote === true) {
+              newUpvotes = Math.max(0, newUpvotes - 1)
+            } else if (previousVote === false) {
+              newDownvotes = Math.max(0, newDownvotes - 1)
+            }
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
+          } else if (action === 'created') {
+            // New vote - increment the appropriate count
+            if (returnedVote === true) {
+              newUpvotes += 1
+            } else if (returnedVote === false) {
+              newDownvotes += 1
+            }
+            return {
+              ...loc,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              user_vote: returnedVote
+            }
           }
         }
         return loc
       }))
     } catch (err) {
       console.error('Failed to vote:', err)
+      alert('Failed to vote. Please try again.')
     }
   }
 
