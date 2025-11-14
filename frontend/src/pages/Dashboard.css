@@ -215,6 +215,7 @@
   display: flex;
   gap: 8px;
   margin-top: auto;
+  flex-wrap: wrap;
 }
 
 .btn-view {
@@ -233,6 +234,26 @@
 .btn-view:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
+}
+
+.btn-brainstorm {
+  padding: 8px 16px;
+  background: transparent;
+  color: #2196F3;
+  border: 1px solid #2196F3;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn-brainstorm:hover {
+  background: #2196F3;
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
 }
 
 .btn-suggestions {

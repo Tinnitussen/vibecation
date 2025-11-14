@@ -222,7 +222,7 @@ This document describes the frontend component structure and layout for the Vibe
   - **Props**: Array of message objects
   - **Message Types**:
     - **User Message**: User's prompt/query (right-aligned, blue)
-    - **System Message**: LLM response with generated activities (left-aligned, gray)
+    - **System Message**: LLM response with generated activities (left-aligned, gray). Use trip_summary from the Trip response as content in the chat message. 
     - **Loading Message**: Spinner/typing indicator while waiting for LLM response
 
   ##### `ChatInput`
@@ -234,8 +234,10 @@ This document describes the frontend component structure and layout for the Vibe
     - "Clear" button (optional)
   - **Functionality**:
     - On send: 
-      - If first message: Call `GET /initial_trip_planner?tripID={tripID}&userID={userID}&query={query}&tripSuggestionID={generatedID}`
-      - If subsequent: Call `GET /iterate_trip_planner?tripID={tripID}&userID={userID}&query={query}&old_plan={JSON.stringify(currentDays)}&tripSuggestionID={tripSuggestionID}`
+      - Always call `GET /trip_brinstorm?tripID={tripID}&userID={userID}&query={query}&old_plan={oldPlan}&tripSuggestionID={tripSuggestionID}`
+      - For first message: Send `old_plan` as empty JSON string `"{}"`
+      - For subsequent messages: Send `old_plan` as JSON string of current days array `JSON.stringify(currentDays)`
+      - The API automatically detects if it's initial generation or iteration based on the `old_plan` parameter
     - Update ActivityCardsPanel with new days array
     - Add user message and system response to chat
 
