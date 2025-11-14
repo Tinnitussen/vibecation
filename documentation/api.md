@@ -156,7 +156,7 @@ paths:
           required: true
           schema:
             type: string
-            description: User's trip planning query/preferences
+            description: User's trip planning query/preferences/prompt
       responses:
         '200':
           description: Trip plan generated successfully
@@ -604,6 +604,118 @@ paths:
           description: Invalid request data
         '404':
           description: Trip not found
+
+  /users:
+    post:
+      summary: Create a new user account
+      description: Register a new user with username, email, name, and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - name
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-zA-Z0-9_]+$'
+                  description: Username (alphanumeric and underscores only)
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  description: Full name
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: Password (minimum 8 characters, must contain uppercase, lowercase, and number)
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userID:
+                    type: string
+                  username:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+                  message:
+                    type: string
+        '400':
+          description: Invalid request data (validation error)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: object
+        '409':
+          description: Conflict - username or email already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  field:
+                    type: string
+                    description: Field that caused the conflict (username or email)
+
+  /users/check-availability:
+    get:
+      summary: Check username or email availability
+      description: Check if a username or email is available for registration
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Username to check
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            format: email
+          description: Email to check
+      responses:
+        '200':
+          description: Availability check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  field:
+                    type: string
+                    description: Field that was checked (username or email)
+        '400':
+          description: Invalid request - must provide either username or email
 
   /users/{userID}:
     get:
