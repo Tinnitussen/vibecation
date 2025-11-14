@@ -488,6 +488,7 @@ MOCK_ACTIVITIES = [
         "activity_name": "Sagrada Familia tour",
         "type": "sightseeing",
         "description": "Guided tour of Gaudí's masterpiece, the iconic Sagrada Familia basilica",
+        "vigor": "medium",
         "location": "Sagrada Familia",
         "upvotes": 5,
         "downvotes": 1,
@@ -498,6 +499,7 @@ MOCK_ACTIVITIES = [
         "activity_name": "Park Güell visit",
         "type": "sightseeing",
         "description": "Visit Gaudí's whimsical Park Güell with colorful mosaics",
+        "vigor": "low",
         "location": "Park Güell",
         "upvotes": 4,
         "downvotes": 0,
@@ -508,6 +510,7 @@ MOCK_ACTIVITIES = [
         "activity_name": "Beach day",
         "type": "relaxing",
         "description": "Relax at Barceloneta Beach",
+        "vigor": "low",
         "location": "Barceloneta Beach",
         "upvotes": 3,
         "downvotes": 2,
@@ -518,6 +521,7 @@ MOCK_ACTIVITIES = [
         "activity_name": "Tapas tour",
         "type": "food",
         "description": "Explore local tapas bars in the Gothic Quarter",
+        "vigor": "low",
         "location": "Gothic Quarter",
         "upvotes": 6,
         "downvotes": 0,
@@ -528,6 +532,7 @@ MOCK_ACTIVITIES = [
         "activity_name": "Flamenco show",
         "type": "entertainment",
         "description": "Experience traditional Spanish flamenco performance",
+        "vigor": "medium",
         "location": "Flamenco Theater",
         "upvotes": 4,
         "downvotes": 1,
@@ -575,49 +580,6 @@ MOCK_LOCATIONS = [
         "upvotes": 1,
         "downvotes": 3,
         "user_vote": None
-    }
-]
-
-MOCK_VIGOR_PREFERENCES = [
-    {
-        "activity_id": "act_001",
-        "activity_name": "Sagrada Familia tour",
-        "preferences": {
-            "low": 1,
-            "medium": 3,
-            "high": 1
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_002",
-        "activity_name": "Park Güell visit",
-        "preferences": {
-            "low": 4,
-            "medium": 1,
-            "high": 0
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_003",
-        "activity_name": "Beach day",
-        "preferences": {
-            "low": 5,
-            "medium": 0,
-            "high": 0
-        },
-        "user_preference": None
-    },
-    {
-        "activity_id": "act_004",
-        "activity_name": "Tapas tour",
-        "preferences": {
-            "low": 3,
-            "medium": 2,
-            "high": 0
-        },
-        "user_preference": None
     }
 ]
 
@@ -701,12 +663,6 @@ async def get_location_poll(tripID: str = Query(...)):
     """Get location poll (mock data)."""
     # Return mock locations regardless of tripID
     return {"locations": MOCK_LOCATIONS}
-
-@app.get("/polls/get/activity_vigor")
-async def get_activity_vigor_poll(tripID: str = Query(...)):
-    """Get activity vigor poll (mock data)."""
-    # Return mock vigor preferences regardless of tripID
-    return {"vigor_preferences": MOCK_VIGOR_PREFERENCES}
 
 @app.get("/polls/get/food_cuisines")
 async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(None)):

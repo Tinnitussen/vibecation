@@ -172,10 +172,23 @@ function Overview() {
               <div className="activities-grid">
                 {decisions.top_activities.map((activity, idx) => (
                   <div key={activity.activity_id || idx} className="activity-card">
-                    <div className="activity-type-badge" style={{
-                      backgroundColor: getActivityTypeColor(activity.type)
-                    }}>
-                      {activity.type}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <div className="activity-type-badge" style={{
+                        backgroundColor: getActivityTypeColor(activity.type)
+                      }}>
+                        {activity.type}
+                      </div>
+                      {activity.vigor && (
+                        <span 
+                          className="vigor-badge"
+                          style={{ 
+                            backgroundColor: getVigorColor(activity.vigor),
+                            color: '#FFFFFF'
+                          }}
+                        >
+                          {activity.vigor}
+                        </span>
+                      )}
                     </div>
                     <h4>{activity.activity_name}</h4>
                     <p className="activity-description">{activity.description}</p>

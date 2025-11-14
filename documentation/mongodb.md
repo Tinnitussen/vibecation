@@ -327,7 +327,7 @@ db.locations.createIndex({ "country": 1, "city": 1 })
   _id: ObjectId,                    // MongoDB auto-generated ID
   pollID: String,                   // Human-readable unique ID (e.g., "poll_001")
   tripID: String,                   // Reference to trips.tripID
-  pollType: String,                 // Enum: "activity", "location", "activity_vigor", "food_cuisine"
+  pollType: String,                 // Enum: "activity", "location", "food_cuisine"
   status: String,                   // Enum: "open", "closed", "completed"
   options: [                        // Poll options (varies by type)
     {
@@ -372,9 +372,9 @@ db.polls.createIndex({ "createdAt": -1 })
   tripID: String,                   // Reference to trips.tripID
   userID: String,                   // Reference to users.userID
   optionID: String,                 // The option being voted on
-  voteType: String,                 // Enum: "activity", "location", "activity_vigor", "food_cuisine"
-  vote: Boolean,                    // true = upvote, false = downvote (or preference for vigor/cuisine)
-  voteValue: Mixed,                 // For vigor: "low"/"medium"/"high", for cuisine: cuisine name
+  voteType: String,                 // Enum: "activity", "location", "food_cuisine"
+  vote: Boolean,                    // true = upvote, false = downvote (or preference for cuisine)
+  voteValue: Mixed,                 // For cuisine: cuisine name
   createdAt: Date,
   updatedAt: Date
 }

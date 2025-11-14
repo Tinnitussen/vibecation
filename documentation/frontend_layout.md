@@ -321,15 +321,6 @@ This document describes the frontend component structure and layout for the Vibe
     - `GET /polls/get/location?tripID={tripID}`
     - `POST /polls/vote/location`
 
-  ##### `ActivityVigorPoll`
-  - **Type**: Poll component
-  - **Props**: `tripID`, `vigorPreferences` (from API)
-  - **Content**:
-    - Activities with vigor level selector (low/medium/high)
-    - Visual indicators for vigor levels
-    - Shows aggregated preferences
-  - **API Call**: `GET /polls/get/activity_vigor?tripID={tripID}`
-
   ##### `FoodCuisinePoll`
   - **Type**: Poll component
   - **Props**: `tripID`, `cuisines` (from API)
@@ -349,7 +340,7 @@ This document describes the frontend component structure and layout for the Vibe
 
 #### `PollTabNavigation`
 - **Type**: Tab component
-- **Tabs**: Activities, Locations, Activity Vigor, Food Cuisines
+- **Tabs**: Activities, Locations, Food Cuisines
 - **Functionality**: Switch between different poll types
 
 ---
