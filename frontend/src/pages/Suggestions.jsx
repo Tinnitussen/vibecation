@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
 import './Suggestions.css'
 
 function Suggestions() {
   const { tripID } = useParams()
   const { userID } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('activities')
   const [loading, setLoading] = useState(true)
@@ -114,10 +116,10 @@ function Suggestions() {
       // Reload cuisines to get accurate vote counts from database
       await loadCuisinePoll()
       
-      alert('Cuisine preferences saved successfully!')
+      toast.success('Cuisine preferences saved successfully!')
     } catch (err) {
       console.error('Failed to submit cuisine votes:', err)
-      alert('Failed to save cuisine preferences. Please try again.')
+      toast.error('Failed to save cuisine preferences. Please try again.')
     }
   }
 
@@ -135,7 +137,7 @@ function Suggestions() {
       await loadActivityPoll()
     } catch (err) {
       console.error('Failed to vote:', err)
-      alert('Failed to vote. Please try again.')
+      toast.error('Failed to vote. Please try again.')
     }
   }
 
@@ -208,7 +210,7 @@ function Suggestions() {
       }))
     } catch (err) {
       console.error('Failed to vote:', err)
-      alert('Failed to vote. Please try again.')
+      toast.error('Failed to vote. Please try again.')
     }
   }
 

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
 import './Overview.css'
 
 function Overview() {
   const { tripID } = useParams()
   const { userID } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [overviewData, setOverviewData] = useState(null)
@@ -120,7 +122,7 @@ function Overview() {
                   className="btn-copy-invite"
                   onClick={() => {
                     navigator.clipboard.writeText(inviteCode)
-                    alert('Invite code copied to clipboard!')
+                    toast.success('Invite code copied to clipboard!')
                   }}
                   title="Copy invite code"
                 >

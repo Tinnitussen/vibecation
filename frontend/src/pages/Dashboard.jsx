@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 import apiClient from '../api/client'
 import './Dashboard.css'
 
 function Dashboard() {
   const { userID, logout } = useAuth()
+  const toast = useToast()
   const [user, setUser] = useState(null)
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [showInviteCodeModal, setShowInviteCodeModal] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [tripToDelete, setTripToDelete] = useState(null)
   const [newTrip, setNewTrip] = useState({ title: '', description: '', members: '' })
   const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
@@ -87,7 +92,7 @@ function Dashboard() {
       loadTrips()
     } catch (err) {
       console.error('Failed to create trip:', err)
-      alert('Failed to create trip. Please try again.')
+      toast.error('Failed to create trip. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -106,9 +111,9 @@ function Dashboard() {
       })
       
       if (response.data.alreadyMember) {
-        alert('You are already a member of this trip!')
+        toast.warning('You are already a member of this trip!')
       } else {
-        alert(`Successfully joined "${response.data.title}"!`)
+        toast.success(`Successfully joined "${response.data.title}"!`)
         setShowJoinModal(false)
         setJoinCode('')
         loadTrips()
@@ -117,26 +122,33 @@ function Dashboard() {
     } catch (err) {
       console.error('Failed to join trip:', err)
       if (err.response?.status === 404) {
-        alert('Invalid invite code. Please check and try again.')
+        toast.error('Invalid invite code. Please check and try again.')
       } else {
-        alert('Failed to join trip. Please try again.')
+        toast.error('Failed to join trip. Please try again.')
       }
     } finally {
       setJoining(false)
     }
   }
 
-  const handleDeleteTrip = async (tripID) => {
-    if (!window.confirm('Are you sure you want to delete this trip?')) {
-      return
-    }
+  const handleDeleteTrip = (tripID) => {
+    setTripToDelete(tripID)
+    setShowConfirmDialog(true)
+  }
+
+  const confirmDeleteTrip = async () => {
+    if (!tripToDelete) return
     
     try {
-      await apiClient.delete(`/trips/${tripID}`)
+      await apiClient.delete(`/trips/${tripToDelete}`)
+      toast.success('Trip deleted successfully')
       loadTrips()
     } catch (err) {
       console.error('Failed to delete trip:', err)
-      alert('Failed to delete trip. Please try again.')
+      toast.error('Failed to delete trip. Please try again.')
+    } finally {
+      setShowConfirmDialog(false)
+      setTripToDelete(null)
     }
   }
 
@@ -358,7 +370,7 @@ function Dashboard() {
                 className="btn-copy"
                 onClick={() => {
                   navigator.clipboard.writeText(createdInviteCode.code)
-                  alert('Invite code copied to clipboard!')
+                  toast.success('Invite code copied to clipboard!')
                 }}
               >
                 📋 Copy
@@ -387,6 +399,18 @@ function Dashboard() {
       >
         +
       </button>
+
+      {showConfirmDialog && (
+        <ConfirmDialog
+          title="Delete Trip"
+          message="Are you sure you want to delete this trip? This action cannot be undone."
+          onConfirm={confirmDeleteTrip}
+          onCancel={() => {
+            setShowConfirmDialog(false)
+            setTripToDelete(null)
+          }}
+        />
+      )}
     </div>
   )
 }
