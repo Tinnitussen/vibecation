@@ -174,6 +174,12 @@ function Dashboard() {
                     >
                       View
                     </button>
+                    <button
+                      className="btn-suggestions"
+                      onClick={() => navigate(`/trips/${trip.tripID}/suggestions`)}
+                    >
+                      Suggestions
+                    </button>
                   </div>
                 </div>
               ))}

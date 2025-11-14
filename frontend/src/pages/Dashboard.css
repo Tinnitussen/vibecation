@@ -235,6 +235,26 @@
   box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
 }
 
+.btn-suggestions {
+  padding: 8px 16px;
+  background: transparent;
+  color: #FF00FF;
+  border: 1px solid #FF00FF;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn-suggestions:hover {
+  background: linear-gradient(135deg, #FF00FF 0%, #FF1493 100%);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
+}
+
 .fab {
   position: fixed;
   bottom: 32px;

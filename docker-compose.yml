@@ -7,7 +7,9 @@ services:
     ports:
       - "27017:27017"
     volumes:
+      # Persistent storage for MongoDB data
       - mongodb_data:/data/db
+      # Initialization script (read-only)
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     environment:
       MONGO_INITDB_DATABASE: vibecation
@@ -18,6 +20,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
     build:
@@ -61,5 +64,8 @@ networks:
     driver: bridge
 
 volumes:
+  # Named volume for persistent MongoDB data storage
+  # Data persists even when containers are removed
   mongodb_data:
+    driver: local
 

@@ -303,6 +303,294 @@ async def delete_trip(tripID: str):
     
     return None
 
+# Mock data for suggestions and polls
+MOCK_SUGGESTIONS = [
+    {
+        "userID": "user_001",
+        "days": [
+            {
+                "id": 1,
+                "date": "2025-04-12",
+                "location": "Barcelona",
+                "description": "Day 1 in Barcelona",
+                "activities": [
+                    {
+                        "id": 1,
+                        "activity_id": "act_001",
+                        "activity_name": "Sagrada Familia tour",
+                        "type": "sightseeing",
+                        "description": "Guided tour of Gaudí's masterpiece",
+                        "vigor": "medium",
+                        "from_date_time": "2025-04-12T10:00:00Z",
+                        "to_date_time": "2025-04-12T11:30:00Z",
+                        "location": "Sagrada Familia"
+                    },
+                    {
+                        "id": 2,
+                        "activity_id": "act_002",
+                        "activity_name": "Park Güell visit",
+                        "type": "sightseeing",
+                        "description": "Visit Gaudí's whimsical park",
+                        "vigor": "low",
+                        "from_date_time": "2025-04-12T14:00:00Z",
+                        "to_date_time": "2025-04-12T16:00:00Z",
+                        "location": "Park Güell"
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "date": "2025-04-13",
+                "location": "Barcelona",
+                "description": "Day 2 in Barcelona",
+                "activities": [
+                    {
+                        "id": 3,
+                        "activity_id": "act_003",
+                        "activity_name": "Beach day",
+                        "type": "relaxing",
+                        "description": "Relax at Barceloneta Beach",
+                        "vigor": "low",
+                        "from_date_time": "2025-04-13T10:00:00Z",
+                        "to_date_time": "2025-04-13T16:00:00Z",
+                        "location": "Barceloneta Beach"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "userID": "user_002",
+        "days": [
+            {
+                "id": 1,
+                "date": "2025-04-12",
+                "location": "Barcelona",
+                "description": "Day 1 in Barcelona",
+                "activities": [
+                    {
+                        "id": 1,
+                        "activity_id": "act_001",
+                        "activity_name": "Sagrada Familia tour",
+                        "type": "sightseeing",
+                        "description": "Guided tour of Gaudí's masterpiece",
+                        "vigor": "medium",
+                        "from_date_time": "2025-04-12T10:00:00Z",
+                        "to_date_time": "2025-04-12T11:30:00Z",
+                        "location": "Sagrada Familia"
+                    },
+                    {
+                        "id": 4,
+                        "activity_id": "act_004",
+                        "activity_name": "Tapas tour",
+                        "type": "food",
+                        "description": "Explore local tapas bars",
+                        "vigor": "low",
+                        "from_date_time": "2025-04-12T19:00:00Z",
+                        "to_date_time": "2025-04-12T21:00:00Z",
+                        "location": "Gothic Quarter"
+                    }
+                ]
+            }
+        ]
+    }
+]
+
+MOCK_ACTIVITIES = [
+    {
+        "activity_id": "act_001",
+        "activity_name": "Sagrada Familia tour",
+        "type": "sightseeing",
+        "description": "Guided tour of Gaudí's masterpiece, the iconic Sagrada Familia basilica",
+        "location": "Sagrada Familia",
+        "upvotes": 5,
+        "downvotes": 1,
+        "user_vote": None
+    },
+    {
+        "activity_id": "act_002",
+        "activity_name": "Park Güell visit",
+        "type": "sightseeing",
+        "description": "Visit Gaudí's whimsical Park Güell with colorful mosaics",
+        "location": "Park Güell",
+        "upvotes": 4,
+        "downvotes": 0,
+        "user_vote": None
+    },
+    {
+        "activity_id": "act_003",
+        "activity_name": "Beach day",
+        "type": "relaxing",
+        "description": "Relax at Barceloneta Beach",
+        "location": "Barceloneta Beach",
+        "upvotes": 3,
+        "downvotes": 2,
+        "user_vote": None
+    },
+    {
+        "activity_id": "act_004",
+        "activity_name": "Tapas tour",
+        "type": "food",
+        "description": "Explore local tapas bars in the Gothic Quarter",
+        "location": "Gothic Quarter",
+        "upvotes": 6,
+        "downvotes": 0,
+        "user_vote": None
+    },
+    {
+        "activity_id": "act_005",
+        "activity_name": "Flamenco show",
+        "type": "entertainment",
+        "description": "Experience traditional Spanish flamenco performance",
+        "location": "Flamenco Theater",
+        "upvotes": 4,
+        "downvotes": 1,
+        "user_vote": None
+    }
+]
+
+MOCK_LOCATIONS = [
+    {
+        "location_id": "loc_001",
+        "name": "Barcelona",
+        "type": "city",
+        "lat": 41.4036,
+        "lon": 2.1744,
+        "upvotes": 5,
+        "downvotes": 0,
+        "user_vote": None
+    },
+    {
+        "location_id": "loc_002",
+        "name": "Madrid",
+        "type": "city",
+        "lat": 40.4168,
+        "lon": -3.7038,
+        "upvotes": 3,
+        "downvotes": 1,
+        "user_vote": None
+    },
+    {
+        "location_id": "loc_003",
+        "name": "Valencia",
+        "type": "city",
+        "lat": 39.4699,
+        "lon": -0.3763,
+        "upvotes": 2,
+        "downvotes": 2,
+        "user_vote": None
+    },
+    {
+        "location_id": "loc_004",
+        "name": "Seville",
+        "type": "city",
+        "lat": 37.3891,
+        "lon": -5.9845,
+        "upvotes": 1,
+        "downvotes": 3,
+        "user_vote": None
+    }
+]
+
+MOCK_VIGOR_PREFERENCES = [
+    {
+        "activity_id": "act_001",
+        "activity_name": "Sagrada Familia tour",
+        "preferences": {
+            "low": 1,
+            "medium": 3,
+            "high": 1
+        },
+        "user_preference": None
+    },
+    {
+        "activity_id": "act_002",
+        "activity_name": "Park Güell visit",
+        "preferences": {
+            "low": 4,
+            "medium": 1,
+            "high": 0
+        },
+        "user_preference": None
+    },
+    {
+        "activity_id": "act_003",
+        "activity_name": "Beach day",
+        "preferences": {
+            "low": 5,
+            "medium": 0,
+            "high": 0
+        },
+        "user_preference": None
+    },
+    {
+        "activity_id": "act_004",
+        "activity_name": "Tapas tour",
+        "preferences": {
+            "low": 3,
+            "medium": 2,
+            "high": 0
+        },
+        "user_preference": None
+    }
+]
+
+MOCK_CUISINES = [
+    {"name": "Spanish", "votes": 5, "selected": False},
+    {"name": "Tapas", "votes": 4, "selected": False},
+    {"name": "Mediterranean", "votes": 3, "selected": False},
+    {"name": "Seafood", "votes": 2, "selected": False},
+    {"name": "Catalan", "votes": 2, "selected": False},
+    {"name": "Italian", "votes": 1, "selected": False},
+    {"name": "French", "votes": 1, "selected": False}
+]
+
+@app.get("/get_all_trip_suggestions")
+async def get_all_trip_suggestions(tripID: str = Query(...)):
+    """Get all trip suggestions (mock data)."""
+    # Return mock suggestions regardless of tripID
+    return {
+        "suggestions": [s["days"] for s in MOCK_SUGGESTIONS],
+        "participants": [s["userID"] for s in MOCK_SUGGESTIONS]
+    }
+
+@app.get("/polls/get/activity")
+async def get_activity_poll(tripID: str = Query(...)):
+    """Get activity poll (mock data)."""
+    # Return mock activities regardless of tripID
+    return {"activities": MOCK_ACTIVITIES}
+
+@app.get("/polls/get/location")
+async def get_location_poll(tripID: str = Query(...)):
+    """Get location poll (mock data)."""
+    # Return mock locations regardless of tripID
+    return {"locations": MOCK_LOCATIONS}
+
+@app.get("/polls/get/activity_vigor")
+async def get_activity_vigor_poll(tripID: str = Query(...)):
+    """Get activity vigor poll (mock data)."""
+    # Return mock vigor preferences regardless of tripID
+    return {"vigor_preferences": MOCK_VIGOR_PREFERENCES}
+
+@app.get("/polls/get/food_cuisines")
+async def get_food_cuisines_poll(tripID: str = Query(...)):
+    """Get food cuisine poll (mock data)."""
+    # Return mock cuisines regardless of tripID
+    return {"cuisines": MOCK_CUISINES}
+
+@app.post("/polls/vote/activity")
+async def vote_activity(vote_data: dict):
+    """Vote on an activity (mock - just returns success)."""
+    # Mock implementation - in real app, would update database
+    return {"message": "Vote recorded successfully", "vote": vote_data.get("vote")}
+
+@app.post("/polls/vote/location")
+async def vote_location(vote_data: dict):
+    """Vote on a location (mock - just returns success)."""
+    # Mock implementation - in real app, would update database
+    return {"message": "Vote recorded successfully", "vote": vote_data.get("vote")}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
