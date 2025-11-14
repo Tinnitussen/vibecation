@@ -18,6 +18,7 @@ function Suggestions() {
   const [locations, setLocations] = useState([])
   const [cuisines, setCuisines] = useState([])
   const [tripInfo, setTripInfo] = useState(null)
+  const [brainstormStatus, setBrainstormStatus] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -32,26 +33,43 @@ function Suggestions() {
       })
       setTripInfo(tripResponse.data)
 
-      // Load suggestions
-      const suggestionsResponse = await apiClient.get('/get_all_trip_suggestions', {
-        params: { tripID }
-      })
-      setSuggestions(suggestionsResponse.data.suggestions)
-      setParticipants(suggestionsResponse.data.participants)
+      // Check brainstorm completion status
+      let completionStatus = { allCompleted: true } // Default to allow access for backward compatibility
+      try {
+        const completionResponse = await apiClient.get('/check_brainstorm_completion', {
+          params: { tripID }
+        })
+        completionStatus = completionResponse.data
+        setBrainstormStatus(completionStatus)
+      } catch (err) {
+        console.error('Failed to check brainstorm completion:', err)
+        // If endpoint doesn't exist or fails, allow access (backward compatibility)
+        setBrainstormStatus(completionStatus)
+      }
 
-      // Load user info for participants
-      const userPromises = suggestionsResponse.data.participants.map(userID =>
-        apiClient.get(`/users/${userID}`).catch(() => ({ data: { name: 'Unknown User', userID } }))
-      )
-      const users = await Promise.all(userPromises)
-      setParticipants(users.map(u => u.data))
+      // Only load suggestions if all members have finished brainstorming
+      if (completionStatus.allCompleted) {
+        // Load suggestions
+        const suggestionsResponse = await apiClient.get('/get_all_trip_suggestions', {
+          params: { tripID }
+        })
+        setSuggestions(suggestionsResponse.data.suggestions)
+        setParticipants(suggestionsResponse.data.participants)
 
-      // Load polls
-      await Promise.all([
-        loadActivityPoll(),
-        loadLocationPoll(),
-        loadCuisinePoll()
-      ])
+        // Load user info for participants
+        const userPromises = suggestionsResponse.data.participants.map(userID =>
+          apiClient.get(`/users/${userID}`).catch(() => ({ data: { name: 'Unknown User', userID } }))
+        )
+        const users = await Promise.all(userPromises)
+        setParticipants(users.map(u => u.data))
+
+        // Load polls
+        await Promise.all([
+          loadActivityPoll(),
+          loadLocationPoll(),
+          loadCuisinePoll()
+        ])
+      }
     } catch (err) {
       console.error('Failed to load data:', err)
     } finally {
@@ -290,6 +308,59 @@ function Suggestions() {
     return (
       <div className="suggestions-loading">
         <div className="spinner"></div>
+      </div>
+    )
+  }
+
+  // Check if all members have finished brainstorming
+  if (brainstormStatus && !brainstormStatus.allCompleted) {
+    const remaining = brainstormStatus.totalMembers - brainstormStatus.completedMembers
+    return (
+      <div className="suggestions-page">
+        <header className="suggestions-header">
+          <div className="header-content">
+            <div className="header-left">
+              <button 
+                className="btn-home"
+                onClick={() => navigate('/dashboard')}
+                title="Home"
+              >
+                🏠
+              </button>
+              <h1>{tripInfo?.title || 'Trip Suggestions'}</h1>
+            </div>
+            <div className="header-actions">
+              <button
+                className="btn-secondary"
+                onClick={() => navigate(`/trips/${tripID}/brainstorm`)}
+              >
+                ← Back to Brainstorm
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="suggestions-main">
+          <div className="brainstorm-waiting">
+            <div className="waiting-icon">⏳</div>
+            <h2>Waiting for All Members to Finish Brainstorming</h2>
+            <p className="waiting-message">
+              {brainstormStatus.completedMembers} of {brainstormStatus.totalMembers} members have submitted their suggestions.
+            </p>
+            <p className="waiting-detail">
+              {remaining} member{remaining !== 1 ? 's' : ''} still need{remaining === 1 ? 's' : ''} to complete brainstorming.
+            </p>
+            <p className="waiting-instruction">
+              Once all members have submitted their suggestions, you'll be able to view and vote on them here.
+            </p>
+            <button
+              className="btn-primary"
+              onClick={() => navigate(`/trips/${tripID}/brainstorm`)}
+            >
+              Go to Brainstorm
+            </button>
+          </div>
+        </main>
       </div>
     )
   }

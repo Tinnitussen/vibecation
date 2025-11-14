@@ -269,6 +269,9 @@ async def get_dashboard(userID: str = Query(...)):
 @app.get("/tripinfo", response_model=TripInfoResponse)
 async def get_trip_info(tripID: str = Query(...)):
     """Get trip information."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
     trip = await db.trips.find_one({"tripID": tripID})
     
     if not trip:
@@ -279,6 +282,43 @@ async def get_trip_info(tripID: str = Query(...)):
         members=trip.get("members", []),
         description=trip.get("description")
     )
+
+@app.get("/check_brainstorm_completion")
+async def check_brainstorm_completion(tripID: str = Query(...)):
+    """Check if all trip members have finished brainstorming (submitted suggestions)."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Get trip info to get all members
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    members = trip.get("members", [])
+    if not members:
+        return {
+            "allCompleted": False,
+            "totalMembers": 0,
+            "completedMembers": 0,
+            "completedUserIDs": []
+        }
+    
+    # Get all submitted suggestions for this trip
+    submitted_suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).to_list(length=100)
+    
+    completed_user_ids = [s["userID"] for s in submitted_suggestions]
+    completed_count = len(set(completed_user_ids))  # Use set to avoid duplicates
+    
+    return {
+        "allCompleted": completed_count >= len(members),
+        "totalMembers": len(members),
+        "completedMembers": completed_count,
+        "completedUserIDs": list(set(completed_user_ids)),
+        "allMemberIDs": members
+    }
 
 @app.post("/createtrip", response_model=dict, status_code=201)
 async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
@@ -595,11 +635,23 @@ MOCK_CUISINES = [
 
 @app.get("/get_all_trip_suggestions")
 async def get_all_trip_suggestions(tripID: str = Query(...)):
-    """Get all trip suggestions (mock data)."""
-    # Return mock suggestions regardless of tripID
+    """Get all trip suggestions from database."""
+    if db is None:
+        # Fallback to mock data if database not connected
+        return {
+            "suggestions": [s["days"] for s in MOCK_SUGGESTIONS],
+            "participants": [s["userID"] for s in MOCK_SUGGESTIONS]
+        }
+    
+    # Get all submitted suggestions for this trip
+    suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).sort("submittedAt", -1).to_list(length=100)
+    
     return {
-        "suggestions": [s["days"] for s in MOCK_SUGGESTIONS],
-        "participants": [s["userID"] for s in MOCK_SUGGESTIONS]
+        "suggestions": [s["days"] for s in suggestions],
+        "participants": [s["userID"] for s in suggestions]
     }
 
 @app.get("/polls/get/activity")
@@ -1118,11 +1170,54 @@ async def trip_brinstorm(
 
 @app.post("/post_trip_suggestion")
 async def post_trip_suggestion(suggestion_data: dict):
-    """Post a trip suggestion (mock - just returns success)."""
-    # Mock implementation - in real app, would save to database
+    """Post a trip suggestion and save to database."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    tripSuggestionID = suggestion_data.get("tripSuggestionID")
+    tripID = suggestion_data.get("tripID")
+    userID = suggestion_data.get("userID")
+    days = suggestion_data.get("days", [])
+    
+    if not all([tripSuggestionID, tripID, userID]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripSuggestionID, tripID, userID")
+    
+    # Check if suggestion already exists
+    existing = await db.trip_suggestions.find_one({
+        "tripSuggestionID": tripSuggestionID
+    })
+    
+    suggestion_doc = {
+        "tripSuggestionID": tripSuggestionID,
+        "tripID": tripID,
+        "userID": userID,
+        "days": days,
+        "status": "submitted",
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+        "submittedAt": datetime.utcnow()
+    }
+    
+    if existing:
+        # Update existing suggestion
+        await db.trip_suggestions.update_one(
+            {"tripSuggestionID": tripSuggestionID},
+            {
+                "$set": {
+                    "days": days,
+                    "status": "submitted",
+                    "updatedAt": datetime.utcnow(),
+                    "submittedAt": datetime.utcnow()
+                }
+            }
+        )
+    else:
+        # Insert new suggestion
+        await db.trip_suggestions.insert_one(suggestion_doc)
+    
     return {
         "message": "Trip suggestion posted successfully",
-        "tripSuggestionID": suggestion_data.get("tripSuggestionID")
+        "tripSuggestionID": tripSuggestionID
     }
 
 if __name__ == "__main__":

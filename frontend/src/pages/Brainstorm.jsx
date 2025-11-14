@@ -15,11 +15,13 @@ function Brainstorm() {
   const [loading, setLoading] = useState(false)
   const [tripSuggestionID, setTripSuggestionID] = useState(null)
   const [selectedTypes, setSelectedTypes] = useState([])
+  const [brainstormStatus, setBrainstormStatus] = useState(null)
   const messagesEndRef = useRef(null)
   const chatInputRef = useRef(null)
 
   useEffect(() => {
     loadTripInfo()
+    checkBrainstormCompletion()
   }, [tripID])
 
   useEffect(() => {
@@ -40,6 +42,19 @@ function Brainstorm() {
       setTripSuggestionID(`suggestion_${Date.now()}`)
     } catch (err) {
       console.error('Failed to load trip info:', err)
+    }
+  }
+
+  const checkBrainstormCompletion = async () => {
+    try {
+      const response = await apiClient.get('/check_brainstorm_completion', {
+        params: { tripID }
+      })
+      setBrainstormStatus(response.data)
+    } catch (err) {
+      console.error('Failed to check brainstorm completion:', err)
+      // Default to allowing access for backward compatibility
+      setBrainstormStatus({ allCompleted: true })
     }
   }
 
@@ -109,8 +124,21 @@ function Brainstorm() {
         userID,
         days
       })
-      alert('Trip suggestion submitted successfully!')
-      navigate(`/trips/${tripID}/suggestions`)
+      // Refresh brainstorm completion status and check if we can navigate
+      const statusResponse = await apiClient.get('/check_brainstorm_completion', {
+        params: { tripID }
+      }).catch(() => ({ data: { allCompleted: true } }))
+      
+      const status = statusResponse.data
+      setBrainstormStatus(status)
+      
+      if (status.allCompleted) {
+        alert('Trip suggestion submitted successfully! All members have finished brainstorming.')
+        navigate(`/trips/${tripID}/suggestions`)
+      } else {
+        const remaining = status.totalMembers - status.completedMembers
+        alert(`Your suggestion has been submitted! Waiting for ${remaining} more member${remaining !== 1 ? 's' : ''} to finish brainstorming.`)
+      }
     } catch (err) {
       console.error('Failed to submit suggestion:', err)
       alert('Failed to submit suggestion. Please try again.')
@@ -170,12 +198,23 @@ function Brainstorm() {
             </button>
             <h1>{tripInfo?.title || 'Trip Brainstorm'}</h1>
           </div>
-          <button
-            className="btn-suggestions"
-            onClick={() => navigate(`/trips/${tripID}/suggestions`)}
-          >
-            View Suggestions
-          </button>
+          {brainstormStatus?.allCompleted ? (
+            <button
+              className="btn-suggestions"
+              onClick={() => navigate(`/trips/${tripID}/suggestions`)}
+            >
+              View Suggestions
+            </button>
+          ) : (
+            <button
+              className="btn-suggestions"
+              disabled={true}
+              title={brainstormStatus ? `Waiting for ${brainstormStatus.totalMembers - brainstormStatus.completedMembers} more member(s) to finish brainstorming` : 'Checking status...'}
+              style={{ opacity: 0.6, cursor: 'not-allowed' }}
+            >
+              View Suggestions ({brainstormStatus ? `${brainstormStatus.completedMembers}/${brainstormStatus.totalMembers}` : '...'})
+            </button>
+          )}
         </div>
       </header>
 
