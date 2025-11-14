@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
 import './Brainstorm.css'
 
@@ -8,6 +9,7 @@ function Brainstorm() {
   const { tripID } = useParams()
   const { userID } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [tripInfo, setTripInfo] = useState(null)
   const [days, setDays] = useState([])
   const [messages, setMessages] = useState([])
@@ -113,7 +115,7 @@ function Brainstorm() {
 
   const handleSubmitSuggestion = async () => {
     if (days.length === 0) {
-      alert('No activities to submit. Please generate a trip plan first.')
+      toast.warning('No activities to submit. Please generate a trip plan first.')
       return
     }
 
@@ -133,15 +135,15 @@ function Brainstorm() {
       setBrainstormStatus(status)
       
       if (status.allCompleted) {
-        alert('Trip suggestion submitted successfully! All members have finished brainstorming.')
+        toast.success('Trip suggestion submitted successfully! All members have finished brainstorming.')
         navigate(`/trips/${tripID}/suggestions`)
       } else {
         const remaining = status.totalMembers - status.completedMembers
-        alert(`Your suggestion has been submitted! Waiting for ${remaining} more member${remaining !== 1 ? 's' : ''} to finish brainstorming.`)
+        toast.info(`Your suggestion has been submitted! Waiting for ${remaining} more member${remaining !== 1 ? 's' : ''} to finish brainstorming.`)
       }
     } catch (err) {
       console.error('Failed to submit suggestion:', err)
-      alert('Failed to submit suggestion. Please try again.')
+      toast.error('Failed to submit suggestion. Please try again.')
     }
   }
 
