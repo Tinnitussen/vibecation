@@ -5,7 +5,7 @@ using the Pydantic models.
 
 import json
 from pathlib import Path
-from models import TripList, Trip, Activity, ActivityType
+from backend.models import TripList, Trip, Activity, ActivityType
 
 
 def load_sample_data():
