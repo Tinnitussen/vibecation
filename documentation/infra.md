@@ -761,6 +761,61 @@ vibecation/
 
 ---
 
+## Azure OpenAI Setup
+
+### Getting Azure OpenAI Credentials
+
+1. **Create Azure OpenAI Resource**
+   - Go to [Azure Portal](https://portal.azure.com)
+   - Create a new "Azure OpenAI" resource
+   - Note your resource name and region
+
+2. **Get API Key**
+   - Navigate to your Azure OpenAI resource
+   - Go to "Keys and Endpoint" section
+   - Copy one of the API keys
+
+3. **Get Endpoint URL**
+   - In the same "Keys and Endpoint" section
+   - Copy the endpoint URL (format: `https://your-resource-name.openai.azure.com/`)
+
+4. **Create Deployment**
+   - Go to "Model deployments" section
+   - Deploy a model (e.g., gpt-4, gpt-35-turbo)
+   - Note the deployment name
+
+5. **Update .env file**
+   ```bash
+   AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+   AZURE_OPENAI_API_KEY=your-actual-api-key-here
+   AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+   AZURE_OPENAI_MODEL=gpt-4
+   ```
+
+### Testing Azure OpenAI Connection
+
+```bash
+# Test from backend container
+docker-compose exec backend python -c "
+import os
+from openai import AzureOpenAI
+
+client = AzureOpenAI(
+    api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+    api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+    azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')
+)
+
+response = client.chat.completions.create(
+    model=os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME'),
+    messages=[{'role': 'user', 'content': 'Hello!'}]
+)
+print(response.choices[0].message.content)
+"
+```
+
+---
+
 ## Quick Start
 
 1. **Clone repository**
@@ -773,6 +828,11 @@ vibecation/
    ```bash
    cp .env.example .env
    # Edit .env with your values
+   # IMPORTANT: Update all secrets, especially:
+   # - MongoDB passwords
+   # - Redis password
+   # - SECRET_KEY and JWT_SECRET
+   # - Azure OpenAI credentials (if using)
    ```
 
 3. **Start services**
