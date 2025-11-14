@@ -243,6 +243,12 @@ function Dashboard() {
                       View
                     </button>
                     <button
+                      className="btn-brainstorm"
+                      onClick={() => navigate(`/trips/${trip.tripID}/brainstorm`)}
+                    >
+                      Brainstorm
+                    </button>
+                    <button
                       className="btn-suggestions"
                       onClick={() => navigate(`/trips/${trip.tripID}/suggestions`)}
                     >
