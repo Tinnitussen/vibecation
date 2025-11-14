@@ -95,11 +95,29 @@ function Suggestions() {
   const loadCuisinePoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/food_cuisines', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setCuisines(response.data.cuisines)
     } catch (err) {
       console.error('Failed to load cuisine poll:', err)
+    }
+  }
+
+  const handleCuisineVote = async (selectedCuisines) => {
+    try {
+      await apiClient.post('/polls/vote/food_cuisine', {
+        tripID,
+        userID,
+        selectedCuisines
+      })
+      
+      // Reload cuisines to get accurate vote counts from database
+      await loadCuisinePoll()
+      
+      alert('Cuisine preferences saved successfully!')
+    } catch (err) {
+      console.error('Failed to submit cuisine votes:', err)
+      alert('Failed to save cuisine preferences. Please try again.')
     }
   }
 
@@ -347,6 +365,7 @@ function Suggestions() {
             {activeTab === 'cuisines' && (
               <FoodCuisinePoll
                 cuisines={cuisines}
+                onSubmit={handleCuisineVote}
               />
             )}
           </div>
@@ -516,8 +535,17 @@ function ActivityVigorPoll({ preferences }) {
   )
 }
 
-function FoodCuisinePoll({ cuisines }) {
+function FoodCuisinePoll({ cuisines, onSubmit }) {
   const [selectedCuisines, setSelectedCuisines] = useState([])
+  const [submitting, setSubmitting] = useState(false)
+
+  // Initialize selected cuisines from loaded data (user's previous selections)
+  useEffect(() => {
+    const userSelected = cuisines
+      .filter(c => c.selected)
+      .map(c => c.name)
+    setSelectedCuisines(userSelected)
+  }, [cuisines])
 
   const toggleCuisine = (cuisineName) => {
     setSelectedCuisines(prev =>
@@ -527,21 +555,48 @@ function FoodCuisinePoll({ cuisines }) {
     )
   }
 
+  const handleSubmit = async () => {
+    if (!onSubmit) return
+    
+    setSubmitting(true)
+    try {
+      await onSubmit(selectedCuisines)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
-    <div className="poll-list">
-      {cuisines.map((cuisine, idx) => (
-        <div key={idx} className="poll-item cuisine-item">
-          <label className="cuisine-checkbox">
-            <input
-              type="checkbox"
-              checked={selectedCuisines.includes(cuisine.name)}
-              onChange={() => toggleCuisine(cuisine.name)}
-            />
-            <span className="cuisine-name">{cuisine.name}</span>
-            <span className="cuisine-votes">{cuisine.votes} votes</span>
-          </label>
-        </div>
-      ))}
+    <div className="cuisine-poll-container">
+      <div className="poll-list">
+        {cuisines.map((cuisine, idx) => (
+          <div key={idx} className="poll-item cuisine-item">
+            <label className="cuisine-checkbox">
+              <input
+                type="checkbox"
+                checked={selectedCuisines.includes(cuisine.name)}
+                onChange={() => toggleCuisine(cuisine.name)}
+              />
+              <span className="cuisine-name">{cuisine.name}</span>
+              <span className="cuisine-votes">{cuisine.votes} votes</span>
+            </label>
+          </div>
+        ))}
+      </div>
+      <div className="cuisine-submit-section">
+        <button
+          className="cuisine-submit-btn"
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? 'Saving...' : 'Submit Cuisine Preferences'}
+        </button>
+        {selectedCuisines.length > 0 && (
+          <p className="cuisine-selection-count">
+            {selectedCuisines.length} cuisine{selectedCuisines.length !== 1 ? 's' : ''} selected
+          </p>
+        )}
+      </div>
     </div>
   )
 }
