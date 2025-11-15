@@ -1096,37 +1096,212 @@ MOCK_TRIP_DETAILS = {
 
 @app.get("/trips/{tripID}/details", response_model=TripDetailsItinerary)
 async def get_trip_details(tripID: str):
-    """Get trip details itinerary."""
+    """Get trip details itinerary generated from voting results."""
     if db is None:
-        # Return mock data if database not connected
-        mock_data = MOCK_TRIP_DETAILS.copy()
-        mock_data["tripID"] = tripID
-        return TripDetailsItinerary(**mock_data)
+        raise HTTPException(status_code=503, detail="Database not connected")
     
     # Check if trip exists
     trip = await db.trips.find_one({"tripID": tripID})
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
-    # Try to get trip details from database
+    # Try to get trip details from database (cached result)
     trip_details = await db.trip_details.find_one({"tripID": tripID})
     
-    if trip_details:
+    if trip_details and "days" in trip_details:
         # Remove MongoDB _id field
         trip_details.pop("_id", None)
-        # Check if it's the new format (with days) or old format
-        if "days" in trip_details:
-            return TripDetailsItinerary(**trip_details)
-        else:
-            # Old format - return mock data for now
-            mock_data = MOCK_TRIP_DETAILS.copy()
-            mock_data["tripID"] = tripID
-            return TripDetailsItinerary(**mock_data)
-    else:
-        # Return mock data if no details exist
-        mock_data = MOCK_TRIP_DETAILS.copy()
-        mock_data["tripID"] = tripID
-        return TripDetailsItinerary(**mock_data)
+        return TripDetailsItinerary(**trip_details)
+    
+    # Generate trip details from voting results
+    # Get all submitted suggestions
+    suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).to_list(length=100)
+    
+    if not suggestions:
+        # No suggestions yet - return empty itinerary
+        return TripDetailsItinerary(
+            tripID=tripID,
+            days=[],
+            trip_summary="No suggestions have been submitted yet. Complete the brainstorming phase first."
+        )
+    
+    # Get all votes for this trip
+    votes_collection = db.votes
+    all_votes = await votes_collection.find({
+        "tripID": tripID
+    }).to_list(length=10000)
+    
+    # Aggregate activity votes
+    activity_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "activity":
+            activity_id = vote.get("optionID")
+            if activity_id not in activity_votes:
+                activity_votes[activity_id] = {"upvotes": 0, "downvotes": 0}
+            if vote.get("vote", True):
+                activity_votes[activity_id]["upvotes"] += 1
+            else:
+                activity_votes[activity_id]["downvotes"] += 1
+    
+    # Aggregate location votes
+    location_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "location":
+            location_id = vote.get("optionID")
+            if location_id not in location_votes:
+                location_votes[location_id] = {"upvotes": 0, "downvotes": 0}
+            if vote.get("vote", True):
+                location_votes[location_id]["upvotes"] += 1
+            else:
+                location_votes[location_id]["downvotes"] += 1
+    
+    # Aggregate cuisine votes
+    cuisine_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "food_cuisine":
+            cuisine_name = vote.get("optionID") or vote.get("voteValue")
+            if cuisine_name:
+                if cuisine_name not in cuisine_votes:
+                    cuisine_votes[cuisine_name] = {"votes": 0}
+                if vote.get("vote", True):
+                    cuisine_votes[cuisine_name]["votes"] += 1
+    
+    # Extract all activities from suggestions
+    all_activities_dict = {}
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            activities_list = day.get("activities", [])
+            for activity in activities_list:
+                activity_id = activity.get("activity_id")
+                if not activity_id:
+                    activity_key = f"{activity.get('activity_name', '')}_{activity.get('type', '')}_{activity.get('location', '')}"
+                    activity_id = hashlib.md5(activity_key.encode()).hexdigest()[:12]
+                    activity_id = f"act_{activity_id}"
+                
+                if activity_id not in all_activities_dict:
+                    all_activities_dict[activity_id] = {
+                        "activity_id": activity_id,
+                        "activity_name": activity.get("activity_name", "Unnamed Activity"),
+                        "type": activity.get("type", "sightseeing"),
+                        "description": activity.get("description", activity.get("activity_description", "")),
+                        "vigor": activity.get("vigor", "medium"),
+                        "location": activity.get("location", activity.get("start_location", "")),
+                        "start_lat": activity.get("start_lat"),
+                        "start_lon": activity.get("start_lon"),
+                    }
+    
+    # Enrich activities with vote data
+    activities = []
+    for activity_id, activity in all_activities_dict.items():
+        counts = activity_votes.get(activity_id, {"upvotes": 0, "downvotes": 0})
+        net_score = counts["upvotes"] - counts["downvotes"]
+        
+        activity_with_votes = {
+            **activity,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "net_score": net_score
+        }
+        activities.append(activity_with_votes)
+    
+    # Extract all unique locations from suggestions
+    all_locations_dict = {}
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            day_location = day.get("location")
+            if day_location:
+                location_id = f"loc_{hashlib.md5(day_location.encode()).hexdigest()[:12]}"
+                if location_id not in all_locations_dict:
+                    all_locations_dict[location_id] = {
+                        "location_id": location_id,
+                        "name": day_location,
+                        "description": day.get("description", ""),
+                        "lat": None,
+                        "lon": None
+                    }
+            
+            activities_list = day.get("activities", [])
+            for activity in activities_list:
+                location_name = activity.get("location") or activity.get("start_location")
+                if location_name:
+                    location_id = f"loc_{hashlib.md5(location_name.encode()).hexdigest()[:12]}"
+                    if location_id not in all_locations_dict:
+                        all_locations_dict[location_id] = {
+                            "location_id": location_id,
+                            "name": location_name,
+                            "description": "",
+                            "lat": activity.get("start_lat"),
+                            "lon": activity.get("start_lon")
+                        }
+    
+    # Enrich locations with vote data
+    locations = []
+    for location_id, location in all_locations_dict.items():
+        counts = location_votes.get(location_id, {"upvotes": 0, "downvotes": 0})
+        net_score = counts["upvotes"] - counts["downvotes"]
+        
+        location_with_votes = {
+            **location,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "net_score": net_score
+        }
+        locations.append(location_with_votes)
+    
+    # Get cuisines from votes
+    cuisines = []
+    for cuisine_name, vote_data in cuisine_votes.items():
+        cuisines.append({
+            "name": cuisine_name,
+            "votes": vote_data["votes"]
+        })
+    
+    # Prepare poll results for create_final_plan
+    poll_results = {
+        "activities": activities,
+        "locations": locations,
+        "cuisines": cuisines
+    }
+    
+    # Convert suggestions to the format expected by create_final_plan
+    old_plans = []
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        if days:
+            old_plans.append(days)
+    
+    # Generate final plan using create_final_plan
+    try:
+        final_plan = create_final_plan(old_plans, poll_results)
+        
+        # Prepare response
+        result = {
+            "tripID": tripID,
+            "days": final_plan.get("days", []),
+            "trip_summary": final_plan.get("trip_summary", "Trip itinerary generated from voting results.")
+        }
+        
+        # Save to database for caching
+        await db.trip_details.update_one(
+            {"tripID": tripID},
+            {"$set": result},
+            upsert=True
+        )
+        
+        return TripDetailsItinerary(**result)
+    except Exception as e:
+        # If generation fails, return empty itinerary with error message
+        print(f"Error generating trip details: {e}")
+        return TripDetailsItinerary(
+            tripID=tripID,
+            days=[],
+            trip_summary=f"Unable to generate trip details. Error: {str(e)}"
+        )
 
 @app.put("/trips/{tripID}/details", response_model=dict)
 async def update_trip_details(tripID: str, details: TripDetailsItinerary):
