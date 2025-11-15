@@ -23,7 +23,7 @@ function Suggestions() {
   const [userFinishedVoting, setUserFinishedVoting] = useState(false)
   const hasNavigatedRef = useRef(false)
 
-  const checkPollingCompletion = useCallback(async () => {
+  const checkPollingCompletion = useCallback(async (showLoading = false) => {
     try {
       const response = await apiClient.get('/check_polling_completion', {
         params: { tripID }
@@ -33,7 +33,13 @@ function Suggestions() {
       
       // Auto-finalize polls when all users are done
       if (response.data.allCompleted) {
+        // Set loading state if requested (e.g., when user just finished voting)
+        if (showLoading) {
+          setLoading(true)
+        }
+        
         try {
+          // Wait for finalization to complete before navigating
           const finalizeResponse = await apiClient.post('/polls/finalize', { tripID })
           if (!finalizeResponse.data.alreadyFinalized) {
             toast.success('Polling results have been finalized!')
@@ -48,14 +54,29 @@ function Suggestions() {
         // Navigate to details page when all users finish voting (only once)
         if (!hasNavigatedRef.current) {
           hasNavigatedRef.current = true
-          // Small delay to show the success message before navigating
+          // Small delay to show the success message and ensure finalization completes
+          // Use a longer timeout to ensure everything is ready
           setTimeout(() => {
-            navigate(`/trips/${tripID}/details`)
+            try {
+              navigate(`/trips/${tripID}/details`)
+            } catch (navErr) {
+              console.error('Navigation error:', navErr)
+              // Fallback: try again after a short delay
+              setTimeout(() => {
+                navigate(`/trips/${tripID}/details`)
+              }, 500)
+            }
           }, 2000)
         }
+      } else if (showLoading) {
+        // If not all completed yet, clear loading state
+        setLoading(false)
       }
     } catch (err) {
       console.error('Failed to check polling completion:', err)
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }, [tripID, userID, toast, navigate])
 
@@ -134,10 +155,12 @@ function Suggestions() {
       })
       setUserFinishedVoting(true)
       toast.success('You have finished voting!')
-      await checkPollingCompletion()
+      // Pass showLoading=true to show loading state if all users are done
+      await checkPollingCompletion(true)
     } catch (err) {
       console.error('Failed to finish voting:', err)
       toast.error('Failed to mark voting as complete. Please try again.')
+      setLoading(false)
     }
   }
 
