@@ -35,11 +35,25 @@ function TripDetails() {
   const loadDetails = async () => {
     try {
       setLoading(true)
+      // Add a small delay to ensure finalization is complete if just finished voting
+      // This helps with race conditions when navigating from suggestions page
+      await new Promise(resolve => setTimeout(resolve, 500))
       const response = await apiClient.get(`/trips/${tripID}/details`)
       setDetails(response.data)
     } catch (err) {
       console.error('Failed to load trip details:', err)
       toast.error('Failed to load trip details')
+      // If details fail to load, try once more after a delay
+      if (err.response?.status === 404 || err.response?.status >= 500) {
+        setTimeout(async () => {
+          try {
+            const retryResponse = await apiClient.get(`/trips/${tripID}/details`)
+            setDetails(retryResponse.data)
+          } catch (retryErr) {
+            console.error('Retry failed:', retryErr)
+          }
+        }, 2000)
+      }
     } finally {
       setLoading(false)
     }
