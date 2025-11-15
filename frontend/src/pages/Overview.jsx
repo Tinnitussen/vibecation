@@ -15,10 +15,12 @@ function Overview() {
   const [error, setError] = useState(null)
   const [inviteCode, setInviteCode] = useState(null)
   const [loadingInviteCode, setLoadingInviteCode] = useState(false)
+  const [brainstormStatus, setBrainstormStatus] = useState(null)
 
   useEffect(() => {
     loadOverviewData()
     loadInviteCode()
+    checkBrainstormCompletion()
   }, [tripID, userID])
 
   const loadInviteCode = async () => {
@@ -50,6 +52,19 @@ function Overview() {
     }
   }
 
+  const checkBrainstormCompletion = async () => {
+    try {
+      const response = await apiClient.get('/check_brainstorm_completion', {
+        params: { tripID }
+      })
+      setBrainstormStatus(response.data)
+    } catch (err) {
+      console.error('Failed to check brainstorm completion:', err)
+      // Default to allowing access for backward compatibility
+      setBrainstormStatus({ allCompleted: true })
+    }
+  }
+
   const getActivityTypeColor = (type) => {
     const colors = {
       sightseeing: '#9C27B0',
@@ -64,6 +79,19 @@ function Overview() {
     return colors[type] || '#757575'
   }
 
+  const getVigorColor = (vigor) => {
+    const colors = {
+      low: '#81C784',
+      medium: '#FFB74D',
+      high: '#E57373'
+    }
+    return colors[vigor] || '#757575'
+  }
+
+  // Determine current phase
+  const isBrainstormComplete = brainstormStatus?.allCompleted || false
+  const currentPhase = isBrainstormComplete ? 'suggestions' : 'brainstorm'
+
   if (loading) {
     return (
       <div className="overview-page">
@@ -75,7 +103,7 @@ function Overview() {
     )
   }
 
-  if (error || !overviewData) {
+  if (error) {
     return (
       <div className="overview-page">
         <div className="overview-error">
@@ -88,7 +116,26 @@ function Overview() {
     )
   }
 
+  if (!overviewData) {
+    return (
+      <div className="overview-page">
+        <div className="overview-loading">
+          <div className="spinner"></div>
+          <p>Loading trip overview...</p>
+        </div>
+      </div>
+    )
+  }
+
   const { trip, decisions } = overviewData
+  
+  // Ensure decisions object exists with default values
+  const safeDecisions = {
+    top_activities: decisions?.top_activities || [],
+    top_locations: decisions?.top_locations || [],
+    top_cuisines: decisions?.top_cuisines || [],
+    total_votes: decisions?.total_votes || 0
+  }
 
   return (
     <div className="overview-page">
@@ -108,10 +155,49 @@ function Overview() {
         <div className="header-content">
           <h1>{trip.title}</h1>
           {trip.description && <p className="trip-description">{trip.description}</p>}
+          
+          {/* Phase Status Indicator */}
+          <div className="phase-status">
+            <div 
+              className={`phase-item ${currentPhase === 'brainstorm' ? 'active clickable' : ''} ${isBrainstormComplete ? 'completed clickable' : ''}`}
+              onClick={() => navigate(`/trips/${tripID}/brainstorm`)}
+            >
+              <div className="phase-number">1</div>
+              <div className="phase-content">
+                <div className="phase-name">Brainstorm</div>
+                {!isBrainstormComplete && brainstormStatus && (
+                  <div className="phase-progress">
+                    {brainstormStatus.completedMembers}/{brainstormStatus.totalMembers} members
+                  </div>
+                )}
+              </div>
+              {isBrainstormComplete && <div className="phase-check">✓</div>}
+            </div>
+            <div className="phase-connector"></div>
+            <div 
+              className={`phase-item ${currentPhase === 'suggestions' ? 'active clickable' : ''} ${isBrainstormComplete ? 'clickable' : 'disabled'}`}
+              onClick={isBrainstormComplete ? () => navigate(`/trips/${tripID}/suggestions`) : undefined}
+            >
+              <div className="phase-number">2</div>
+              <div className="phase-content">
+                <div className="phase-name">Suggestions</div>
+                {isBrainstormComplete && <div className="phase-subtitle">Vote on activities</div>}
+              </div>
+            </div>
+            <div className="phase-connector"></div>
+            <div className={`phase-item disabled`}>
+              <div className="phase-number">3</div>
+              <div className="phase-content">
+                <div className="phase-name">Details</div>
+                <div className="phase-subtitle">Coming soon</div>
+              </div>
+            </div>
+          </div>
+
           <div className="trip-meta">
             <span className="meta-item">👥 {trip.members?.length || 0} members</span>
-            <span className="meta-item">📊 {decisions.total_votes} total votes</span>
-            <span className="meta-item">Status: {trip.status}</span>
+            <span className="meta-item">📊 {safeDecisions.total_votes} total votes</span>
+            <span className="meta-item">Status: {trip.status || 'planning'}</span>
           </div>
           {inviteCode && (
             <div className="invite-code-section">
@@ -139,22 +225,22 @@ function Overview() {
         <div className="overview-stats">
           <div className="stat-card">
             <div className="stat-icon">🎯</div>
-            <div className="stat-value">{decisions.top_activities.length}</div>
+            <div className="stat-value">{safeDecisions.top_activities.length}</div>
             <div className="stat-label">Top Activities</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">📍</div>
-            <div className="stat-value">{decisions.top_locations.length}</div>
+            <div className="stat-value">{safeDecisions.top_locations.length}</div>
             <div className="stat-label">Top Locations</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">🍽️</div>
-            <div className="stat-value">{decisions.top_cuisines.length}</div>
+            <div className="stat-value">{safeDecisions.top_cuisines.length}</div>
             <div className="stat-label">Top Cuisines</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">✅</div>
-            <div className="stat-value">{decisions.total_votes}</div>
+            <div className="stat-value">{safeDecisions.total_votes}</div>
             <div className="stat-label">Total Votes</div>
           </div>
         </div>
@@ -163,14 +249,14 @@ function Overview() {
           <h2>Final Decisions</h2>
           <p className="section-subtitle">Based on group voting and preferences</p>
 
-          {decisions.top_activities.length > 0 && (
+          {safeDecisions.top_activities.length > 0 && (
             <div className="decision-card">
               <div className="decision-header">
                 <h3>🎯 Top Activities</h3>
-                <span className="decision-count">{decisions.top_activities.length} activities</span>
+                <span className="decision-count">{safeDecisions.top_activities.length} activities</span>
               </div>
               <div className="activities-grid">
-                {decisions.top_activities.map((activity, idx) => (
+                {safeDecisions.top_activities.map((activity, idx) => (
                   <div key={activity.activity_id || idx} className="activity-card">
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
                       <div className="activity-type-badge" style={{
@@ -206,14 +292,14 @@ function Overview() {
             </div>
           )}
 
-          {decisions.top_locations.length > 0 && (
+          {safeDecisions.top_locations.length > 0 && (
             <div className="decision-card">
               <div className="decision-header">
                 <h3>📍 Top Locations</h3>
-                <span className="decision-count">{decisions.top_locations.length} locations</span>
+                <span className="decision-count">{safeDecisions.top_locations.length} locations</span>
               </div>
               <div className="locations-grid">
-                {decisions.top_locations.map((location, idx) => (
+                {safeDecisions.top_locations.map((location, idx) => (
                   <div key={location.location_id || idx} className="location-card">
                     <h4>{location.name}</h4>
                     <p className="location-description">{location.description}</p>
@@ -233,14 +319,14 @@ function Overview() {
             </div>
           )}
 
-          {decisions.top_cuisines.length > 0 && (
+          {safeDecisions.top_cuisines.length > 0 && (
             <div className="decision-card">
               <div className="decision-header">
                 <h3>🍽️ Top Cuisines</h3>
-                <span className="decision-count">{decisions.top_cuisines.length} cuisines</span>
+                <span className="decision-count">{safeDecisions.top_cuisines.length} cuisines</span>
               </div>
               <div className="cuisines-grid">
-                {decisions.top_cuisines.map((cuisine, idx) => (
+                {safeDecisions.top_cuisines.map((cuisine, idx) => (
                   <div key={cuisine.name || idx} className="cuisine-card">
                     <h4>{cuisine.name}</h4>
                     <div className="cuisine-votes">
@@ -252,16 +338,18 @@ function Overview() {
             </div>
           )}
 
-          {decisions.top_activities.length === 0 && 
-           decisions.top_locations.length === 0 && 
-           decisions.top_cuisines.length === 0 && (
+          {safeDecisions.top_activities.length === 0 && 
+           safeDecisions.top_locations.length === 0 && 
+           safeDecisions.top_cuisines.length === 0 && (
             <div className="empty-decisions">
               <div className="empty-icon">🗳️</div>
               <h3>No decisions yet</h3>
               <p>Start voting on suggestions to see final decisions here!</p>
               <button 
-                className="primary-btn"
-                onClick={() => navigate(`/trips/${tripID}/suggestions`)}
+                className={`primary-btn ${!isBrainstormComplete ? 'disabled' : ''}`}
+                onClick={() => isBrainstormComplete && navigate(`/trips/${tripID}/suggestions`)}
+                disabled={!isBrainstormComplete}
+                title={!isBrainstormComplete ? 'Complete brainstorming first' : ''}
               >
                 Go to Suggestions
               </button>
@@ -271,8 +359,10 @@ function Overview() {
 
         <div className="overview-actions">
           <button 
-            className="action-btn secondary"
-            onClick={() => navigate(`/trips/${tripID}/suggestions`)}
+            className={`action-btn secondary ${!isBrainstormComplete ? 'disabled' : ''}`}
+            onClick={() => isBrainstormComplete && navigate(`/trips/${tripID}/suggestions`)}
+            disabled={!isBrainstormComplete}
+            title={!isBrainstormComplete ? 'Complete brainstorming first' : ''}
           >
             View Suggestions
           </button>

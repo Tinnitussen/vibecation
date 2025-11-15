@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -19,10 +19,44 @@ function Suggestions() {
   const [cuisines, setCuisines] = useState([])
   const [tripInfo, setTripInfo] = useState(null)
   const [brainstormStatus, setBrainstormStatus] = useState(null)
+  const [pollingStatus, setPollingStatus] = useState(null)
+  const [userFinishedVoting, setUserFinishedVoting] = useState(false)
+
+  const checkPollingCompletion = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/check_polling_completion', {
+        params: { tripID }
+      })
+      setPollingStatus(response.data)
+      setUserFinishedVoting(response.data.completedUserIDs.includes(userID))
+      
+      // Auto-finalize polls when all users are done
+      if (response.data.allCompleted) {
+        try {
+          const finalizeResponse = await apiClient.post('/polls/finalize', { tripID })
+          if (!finalizeResponse.data.alreadyFinalized) {
+            toast.success('Polling results have been finalized!')
+          }
+        } catch (err) {
+          // Ignore if already finalized (400 error means not all users done or already finalized)
+          if (err.response?.status !== 400) {
+            console.error('Failed to finalize polls:', err)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check polling completion:', err)
+    }
+  }, [tripID, userID, toast])
 
   useEffect(() => {
     loadData()
-  }, [tripID])
+    // Poll for polling completion status every 5 seconds
+    const interval = setInterval(() => {
+      checkPollingCompletion()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [tripID, checkPollingCompletion])
 
   const loadData = async () => {
     setLoading(true)
@@ -69,11 +103,29 @@ function Suggestions() {
           loadLocationPoll(),
           loadCuisinePoll()
         ])
+
+        // Check polling completion status
+        await checkPollingCompletion()
       }
     } catch (err) {
       console.error('Failed to load data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFinishVoting = async () => {
+    try {
+      await apiClient.post('/polls/finish_voting', {
+        tripID,
+        userID
+      })
+      setUserFinishedVoting(true)
+      toast.success('You have finished voting!')
+      await checkPollingCompletion()
+    } catch (err) {
+      console.error('Failed to finish voting:', err)
+      toast.error('Failed to mark voting as complete. Please try again.')
     }
   }
 
@@ -91,7 +143,7 @@ function Suggestions() {
   const loadLocationPoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/location', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setLocations(response.data.locations)
     } catch (err) {
@@ -296,12 +348,13 @@ function Suggestions() {
   }
 
   const calculatePollProgress = () => {
-    const totalPolls = 3
-    let completed = 0
-    if (activities.length > 0) completed++
-    if (locations.length > 0) completed++
-    if (cuisines.length > 0) completed++
-    return { completed, total: totalPolls, percentage: (completed / totalPolls) * 100 }
+    if (!pollingStatus) {
+      return { completed: 0, total: 0, percentage: 0 }
+    }
+    const completed = pollingStatus.completedMembers || 0
+    const total = pollingStatus.totalMembers || 0
+    const percentage = total > 0 ? (completed / total) * 100 : 0
+    return { completed, total, percentage }
   }
 
   if (loading) {
@@ -440,10 +493,24 @@ function Suggestions() {
               ></div>
             </div>
             <p className="progress-text">
-              {progress.completed} of {progress.total} polls completed
+              {progress.completed} of {progress.total} {progress.total === 1 ? 'user has' : 'users have'} finished voting
             </p>
-            {progress.completed === progress.total && (
-              <p className="progress-complete">✓ All polls complete!</p>
+            {progress.completed === progress.total && progress.total > 0 && (
+              <p className="progress-complete">✓ All users have finished voting!</p>
+            )}
+            {!userFinishedVoting && (
+              <button
+                className="btn-primary finish-voting-btn"
+                onClick={handleFinishVoting}
+                style={{ marginTop: '16px' }}
+              >
+                Finish Voting
+              </button>
+            )}
+            {userFinishedVoting && (
+              <p className="user-complete-indicator" style={{ marginTop: '16px', color: '#4CAF50', fontWeight: 600 }}>
+                ✓ You have finished voting
+              </p>
             )}
           </div>
 
@@ -479,7 +546,7 @@ function Suggestions() {
             )}
             {activeTab === 'locations' && (
               <LocationPoll
-                locations={locations}
+                locations={locations || []}
                 onVote={handleLocationVote}
               />
             )}
@@ -557,9 +624,19 @@ function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalAc
 
 // Unified poll component for activities, locations, and cuisines
 function UnifiedPoll({ items, onVote, getItemId, getItemName, getItemHeader, getItemDescription, getItemExtra }) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="poll-list">
+        <p className="no-items">No items available for voting yet.</p>
+      </div>
+    )
+  }
+  
   return (
     <div className="poll-list">
       {items.map((item) => {
+        if (!item) return null
+        
         const itemId = getItemId(item)
         const itemName = getItemName(item)
         const header = getItemHeader(item)
@@ -641,11 +718,16 @@ function LocationPoll({ locations, onVote }) {
       getItemHeader={(item) => (
         <>
           <h3>{item.name}</h3>
-          <span className="location-type">{item.type}</span>
+          {item.type && <span className="location-type">{item.type}</span>}
         </>
       )}
       getItemDescription={() => null}
-      getItemExtra={(item) => `📍 ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}`}
+      getItemExtra={(item) => {
+        if (item.lat != null && item.lon != null) {
+          return `📍 ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}`
+        }
+        return item.location || null
+      }}
     />
   )
 }

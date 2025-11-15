@@ -67,6 +67,138 @@
   font-size: 1.1rem;
 }
 
+.phase-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.phase-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s;
+  flex: 1;
+  min-width: 140px;
+  position: relative;
+}
+
+.phase-item.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.phase-item.clickable {
+  cursor: pointer;
+}
+
+.phase-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+  border-color: #5568d3;
+}
+
+.phase-item.clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.phase-item.completed {
+  border-color: #4CAF50;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+}
+
+.phase-item.completed.clickable:hover {
+  border-color: #45a049;
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+}
+
+.phase-item.disabled {
+  opacity: 0.5;
+  background: #f5f5f5;
+  border-color: #d0d0d0;
+  cursor: not-allowed;
+}
+
+.phase-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.phase-item.active .phase-number {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.phase-item.completed .phase-number {
+  background: #4CAF50;
+  color: white;
+}
+
+.phase-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.phase-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.phase-item.disabled .phase-name {
+  color: #999;
+}
+
+.phase-subtitle {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.phase-progress {
+  font-size: 0.8rem;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.phase-check {
+  color: #4CAF50;
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.phase-connector {
+  width: 20px;
+  height: 2px;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.phase-item.completed + .phase-connector {
+  background: #4CAF50;
+}
+
 .trip-meta {
   display: flex;
   gap: 1.5rem;
@@ -402,6 +534,17 @@
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
+.primary-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #d0d0d0;
+}
+
+.primary-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .overview-actions {
   display: flex;
   gap: 1rem;
@@ -428,6 +571,19 @@
   background: white;
   color: #667eea;
   border: 2px solid #667eea;
+}
+
+.action-btn.secondary.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+  color: #999;
+  border-color: #d0d0d0;
+}
+
+.action-btn.secondary.disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .action-btn:hover {
@@ -467,6 +623,21 @@
 
   .header-content h1 {
     font-size: 2rem;
+  }
+
+  .phase-status {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .phase-connector {
+    width: 2px;
+    height: 20px;
+    transform: rotate(90deg);
+  }
+
+  .phase-item {
+    width: 100%;
   }
 
   .overview-main {
