@@ -258,6 +258,34 @@ class TripDetails(BaseModel):
     additional: Optional[AdditionalDetails] = None
     updatedAt: Optional[str] = None  # datetime string
 
+# Trip Details Itinerary Model (for itinerary-based details)
+class ActivityDetail(BaseModel):
+    id: Optional[str] = None
+    activity_id: Optional[str] = None
+    activity_name: str
+    type: str
+    description: str
+    from_date_time: Optional[str] = None
+    to_date_time: Optional[str] = None
+    location: Optional[str] = None
+    vigor: Optional[str] = None
+    start_lat: Optional[float] = None
+    start_lon: Optional[float] = None
+    end_lat: Optional[float] = None
+    end_lon: Optional[float] = None
+
+class DayDetail(BaseModel):
+    id: int
+    date: str
+    location: str
+    description: str
+    activities: List[ActivityDetail] = []
+
+class TripDetailsItinerary(BaseModel):
+    tripID: Optional[str] = None
+    days: List[DayDetail] = []
+    trip_summary: Optional[str] = None
+
 # Helper functions
 async def get_next_id(collection_name: str) -> str:
     """Generate next sequential ID for a collection."""
@@ -611,190 +639,249 @@ async def join_trip_by_invite_code(invite_code: str = Query(..., alias="inviteCo
 
 # Mock data for trip details
 MOCK_TRIP_DETAILS = {
-    "tripID": "trip_001",
-    "accommodations": [
+    "days": [
         {
-            "id": "acc_001",
-            "name": "Grand Hotel Barcelona",
-            "type": "hotel",
-            "checkIn": "2024-07-15",
-            "checkOut": "2024-07-20",
-            "address": "123 La Rambla",
-            "city": "Barcelona",
-            "country": "Spain",
-            "phone": "+34 93 123 4567",
-            "bookingReference": "GHB-2024-789",
-            "confirmationNumber": "CNF-ABC123",
-            "notes": "Requested room with sea view"
-        }
-    ],
-    "transportation": {
-        "flights": [
-            {
-                "id": "flight_001",
-                "type": "outbound",
-                "departureAirport": "JFK",
-                "arrivalAirport": "BCN",
-                "departureDateTime": "2024-07-15T10:30:00Z",
-                "arrivalDateTime": "2024-07-15T22:15:00Z",
-                "airline": "Iberia",
-                "flightNumber": "IB6251",
-                "bookingReference": "IB-789456",
-                "confirmationNumber": "ABC123XYZ",
-                "seatAssignments": "12A, 12B",
-                "notes": "Window seats requested"
-            },
-            {
-                "id": "flight_002",
-                "type": "return",
-                "departureAirport": "BCN",
-                "arrivalAirport": "JFK",
-                "departureDateTime": "2024-07-20T14:00:00Z",
-                "arrivalDateTime": "2024-07-20T18:30:00Z",
-                "airline": "Iberia",
-                "flightNumber": "IB6252",
-                "bookingReference": "IB-789457",
-                "confirmationNumber": "ABC124XYZ"
-            }
-        ],
-        "rentalCar": {
-            "hasRentalCar": True,
-            "company": "Hertz",
-            "pickupLocation": "Barcelona Airport",
-            "pickupDateTime": "2024-07-15T23:00:00Z",
-            "dropoffLocation": "Barcelona Airport",
-            "dropoffDateTime": "2024-07-20T12:00:00Z",
-            "carType": "midsize",
-            "bookingReference": "HZ-456789",
-            "confirmationNumber": "HZ-CNF-123"
-        },
-        "publicTransport": {
-            "passes": ["metro", "bus"],
-            "details": "10-day metro pass for Barcelona"
-        },
-        "other": "Taxi from airport to hotel"
-    },
-    "documents": {
-        "passport": {
-            "required": True,
-            "expirationDate": "2026-12-31",
-            "minimumValidityMonths": 6,
-            "notes": "Passport must be valid for at least 6 months after return date"
-        },
-        "visa": {
-            "required": False,
-            "type": None,
-            "applicationDate": None,
-            "approvalDate": None,
-            "visaNumber": None,
-            "notes": "No visa required for US citizens visiting Spain"
-        },
-        "travelInsurance": {
-            "hasInsurance": True,
-            "provider": "World Nomads",
-            "policyNumber": "WN-2024-789456",
-            "coverageAmount": 50000,
-            "currency": "USD",
-            "emergencyContact": "+1-800-123-4567",
-            "notes": "Covers medical emergencies and trip cancellation"
-        },
-        "emergencyContacts": [
-            {
-                "id": "contact_001",
-                "name": "John Doe",
-                "relationship": "Spouse",
-                "phone": "+1-555-0100",
-                "email": "john.doe@example.com",
-                "notes": "Primary emergency contact"
-            },
-            {
-                "id": "contact_002",
-                "name": "Jane Smith",
-                "relationship": "Sister",
-                "phone": "+1-555-0101",
-                "email": "jane.smith@example.com"
-            }
-        ]
-    },
-    "budget": {
-        "total": 5000,
-        "currency": "USD",
-        "breakdown": {
-            "accommodation": 1500,
-            "food": 1200,
-            "activities": 1000,
-            "transportation": 800,
-            "shopping": 300,
-            "miscellaneous": 200
-        },
-        "expenses": [
-            {
-                "id": "exp_001",
-                "date": "2024-07-15",
-                "category": "food",
-                "description": "Dinner at restaurant",
-                "amount": 85.50
-            },
-            {
-                "id": "exp_002",
-                "date": "2024-07-16",
-                "category": "activities",
-                "description": "Sagrada Familia tickets",
-                "amount": 45.00
-            }
-        ]
-    },
-    "additional": {
-        "packingList": [
-            {"id": "item_001", "item": "Passport", "packed": True},
-            {"id": "item_002", "item": "Travel adapter", "packed": False},
-            {"id": "item_003", "item": "Sunscreen SPF 50", "packed": False},
-            {"id": "item_004", "item": "Comfortable walking shoes", "packed": True}
-        ],
-        "importantNotes": [
-            {
-                "id": "note_001",
-                "content": "Remember to exchange currency at airport",
-                "createdAt": "2024-07-10T10:00:00Z"
-            },
-            {
-                "id": "note_002",
-                "content": "Check-in time is 3 PM, early check-in available for fee",
-                "createdAt": "2024-07-11T14:30:00Z"
-            }
-        ],
-        "weather": {
-            "current": {
-                "temperature": 28,
-                "condition": "Sunny",
-                "humidity": 65
-            },
-            "forecast": [
+            "id": 1,
+            "date": "2024-07-01",
+            "location": "Athens International Airport",
+            "description": "Day 1 in Athens International Airport",
+            "activities": [
                 {
-                    "date": "2024-07-15",
-                    "high": 30,
-                    "low": 22,
-                    "condition": "Sunny"
+                    "id": "day1-athens-arrival",
+                    "activity_id": "day1-athens-arrival",
+                    "activity_name": "Arrive in Athens & Explore the Acropolis",
+                    "type": "attraction",
+                    "description": "Arrive at Athens International Airport in the morning, transfer to your hotel, and set out to explore the Acropolis. Visit the Parthenon and the Acropolis Museum. Enjoy a traditional Greek dinner in Plaka in the evening.",
+                    "from_date_time": "2024-07-01T09:00:00+03:00",
+                    "to_date_time": "2024-07-01T18:00:00+03:00",
+                    "location": "Athens International Airport",
+                    "vigor": "medium",
+                    "start_lat": 37.9364,
+                    "start_lon": 23.9445,
+                    "end_lat": 37.9715,
+                    "end_lon": 23.7267
                 }
             ]
         },
-        "timeZone": {
-            "destination": "Europe/Madrid",
-            "offset": "+2:00",
-            "differenceFromHome": "+6 hours"
+        {
+            "id": 2,
+            "date": "2024-07-02",
+            "location": "Hotel in Athens",
+            "description": "Day 2 in Hotel in Athens",
+            "activities": [
+                {
+                    "id": "day2-athens-walk",
+                    "activity_id": "day2-athens-walk",
+                    "activity_name": "Athens City Walk & Plaka Neighborhood",
+                    "type": "attraction",
+                    "description": "Discover Athens highlights: Ancient Agora, Temple of Olympian Zeus, changing of the guard at Syntagma Square. Evening stroll in Plaka, dinner at a taverna.",
+                    "from_date_time": "2024-07-02T09:00:00+03:00",
+                    "to_date_time": "2024-07-02T20:00:00+03:00",
+                    "location": "Hotel in Athens",
+                    "vigor": "medium",
+                    "start_lat": 37.985,
+                    "start_lon": 23.733,
+                    "end_lat": 37.9737,
+                    "end_lon": 23.7306
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "date": "2024-07-03",
+            "location": "Athens",
+            "description": "Day 3 in Athens",
+            "activities": [
+                {
+                    "id": "day3-delphi-trip",
+                    "activity_id": "day3-delphi-trip",
+                    "activity_name": "Day Trip to Delphi",
+                    "type": "travel",
+                    "description": "Take a guided day trip to the ancient site of Delphi. Tour the Temple of Apollo, Theater, and Archaeological Museum. Return to Athens in the evening.",
+                    "from_date_time": "2024-07-03T07:00:00+03:00",
+                    "to_date_time": "2024-07-03T19:00:00+03:00",
+                    "location": "Athens",
+                    "vigor": "low",
+                    "start_lat": 37.9838,
+                    "start_lon": 23.7275,
+                    "end_lat": 38.4839,
+                    "end_lon": 22.501
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "date": "2024-07-04",
+            "location": "Piraeus Port",
+            "description": "Day 4 in Piraeus Port",
+            "activities": [
+                {
+                    "id": "day4-ferry-mykonos",
+                    "activity_id": "day4-ferry-mykonos",
+                    "activity_name": "Ferry to Mykonos & Beach Afternoon",
+                    "type": "travel",
+                    "description": "Take the morning ferry from Piraeus to Mykonos. Check in to your hotel and spend the afternoon relaxing on one of Mykonos's beautiful beaches.",
+                    "from_date_time": "2024-07-04T08:00:00+03:00",
+                    "to_date_time": "2024-07-04T15:00:00+03:00",
+                    "location": "Piraeus Port",
+                    "vigor": "low",
+                    "start_lat": 37.9429,
+                    "start_lon": 23.6466,
+                    "end_lat": 37.4467,
+                    "end_lon": 25.3289
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "date": "2024-07-05",
+            "location": "Mykonos Town",
+            "description": "Day 5 in Mykonos Town",
+            "activities": [
+                {
+                    "id": "day5-mykonos-discovery",
+                    "activity_id": "day5-mykonos-discovery",
+                    "activity_name": "Explore Mykonos Town & Beaches",
+                    "type": "attraction",
+                    "description": "Wander through Mykonos Town, see the iconic windmills and Little Venice, then relax at Super Paradise Beach. Enjoy Mykonos nightlife.",
+                    "from_date_time": "2024-07-05T09:00:00+03:00",
+                    "to_date_time": "2024-07-05T20:00:00+03:00",
+                    "location": "Mykonos Town",
+                    "vigor": "medium",
+                    "start_lat": 37.4467,
+                    "start_lon": 25.3289,
+                    "end_lat": 37.4283,
+                    "end_lon": 25.3603
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "date": "2024-07-06",
+            "location": "Mykonos Old Port",
+            "description": "Day 6 in Mykonos Old Port",
+            "activities": [
+                {
+                    "id": "day6-delos-excursion",
+                    "activity_id": "day6-delos-excursion",
+                    "activity_name": "Day Excursion to Delos",
+                    "type": "attraction",
+                    "description": "Join a boat tour from Mykonos Old Port to Delos Island. Guided tour of the UNESCO World Heritage Site, return to Mykonos for the afternoon.",
+                    "from_date_time": "2024-07-06T09:30:00+03:00",
+                    "to_date_time": "2024-07-06T14:00:00+03:00",
+                    "location": "Mykonos Old Port",
+                    "vigor": "medium",
+                    "start_lat": 37.451,
+                    "start_lon": 25.3276,
+                    "end_lat": 37.399,
+                    "end_lon": 25.2678
+                }
+            ]
+        },
+        {
+            "id": 7,
+            "date": "2024-07-07",
+            "location": "Mykonos Port",
+            "description": "Day 7 in Mykonos Port",
+            "activities": [
+                {
+                    "id": "day7-ferry-santorini",
+                    "activity_id": "day7-ferry-santorini",
+                    "activity_name": "Ferry to Santorini & Oia Sunset",
+                    "type": "travel",
+                    "description": "Morning ferry to Santorini, check in to your cliffside hotel. Evening visit to beautiful Oia for the iconic sunset.",
+                    "from_date_time": "2024-07-07T08:00:00+03:00",
+                    "to_date_time": "2024-07-07T17:00:00+03:00",
+                    "location": "Mykonos Port",
+                    "vigor": "low",
+                    "start_lat": 37.454,
+                    "start_lon": 25.345,
+                    "end_lat": 36.4617,
+                    "end_lon": 25.3754
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "date": "2024-07-08",
+            "location": "Fira, Santorini",
+            "description": "Day 8 in Fira, Santorini",
+            "activities": [
+                {
+                    "id": "day8-santorini-explore",
+                    "activity_id": "day8-santorini-explore",
+                    "activity_name": "Santorini Highlights: Akrotiri, Beaches & Winery",
+                    "type": "attraction",
+                    "description": "Tour the Akrotiri Archaeological Site, visit Red Beach and Perissa's black sands, with a wine tasting at a local winery.",
+                    "from_date_time": "2024-07-08T09:00:00+03:00",
+                    "to_date_time": "2024-07-08T20:00:00+03:00",
+                    "location": "Fira, Santorini",
+                    "vigor": "medium",
+                    "start_lat": 36.4167,
+                    "start_lon": 25.4333,
+                    "end_lat": 36.4146,
+                    "end_lon": 25.4556
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "date": "2024-07-09",
+            "location": "Santorini Old Port",
+            "description": "Day 9 in Santorini Old Port",
+            "activities": [
+                {
+                    "id": "day9-catamaran-santorini",
+                    "activity_id": "day9-catamaran-santorini",
+                    "activity_name": "Santorini Catamaran Cruise",
+                    "type": "entertainment",
+                    "description": "Full-day catamaran cruise with stops for swimming, snorkeling, and a seafood lunch on board. Enjoy views of the caldera.",
+                    "from_date_time": "2024-07-09T10:00:00+03:00",
+                    "to_date_time": "2024-07-09T18:30:00+03:00",
+                    "location": "Santorini Old Port",
+                    "vigor": "medium",
+                    "start_lat": 36.419,
+                    "start_lon": 25.428,
+                    "end_lat": 36.419,
+                    "end_lon": 25.428
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "date": "2024-07-10",
+            "location": "Santorini Airport/Port",
+            "description": "Day 10 in Santorini Airport/Port",
+            "activities": [
+                {
+                    "id": "day10-athens-return-departure",
+                    "activity_id": "day10-athens-return-departure",
+                    "activity_name": "Return to Athens & Departure",
+                    "type": "travel",
+                    "description": "Morning flight or ferry back to Athens. If time permits, enjoy some last-minute shopping in the Monastiraki area before your departure.",
+                    "from_date_time": "2024-07-10T07:00:00+03:00",
+                    "to_date_time": "2024-07-10T17:00:00+03:00",
+                    "location": "Santorini Airport/Port",
+                    "vigor": "low",
+                    "start_lat": 36.4035,
+                    "start_lon": 25.4793,
+                    "end_lat": 37.9364,
+                    "end_lon": 23.9445
+                }
+            ]
         }
-    },
-    "updatedAt": "2024-07-12T10:30:00Z"
+    ],
+    "trip_summary": "This 10-day Greece itinerary offers a perfect blend of ancient history, vibrant island life, and relaxing beaches. Begin your journey in Athens, exploring iconic sites like the Acropolis before venturing on a day trip to the mystical ruins of Delphi. Continue your adventure by ferry to Mykonos with its picturesque town, lively beaches, and a day trip to the archaeological wonder of Delos. Next, experience the awe-inspiring beauty of Santorini—from volcanic beaches and archaeological treasures to the legendary sunset in Oia. Cap off your journey with a catamaran cruise and a relaxed return to Athens for your departure. Perfect for first-time visitors who want to experience the classics and the charms of the islands."
 }
 
-@app.get("/trips/{tripID}/details", response_model=TripDetails)
+@app.get("/trips/{tripID}/details", response_model=TripDetailsItinerary)
 async def get_trip_details(tripID: str):
-    """Get trip details configuration."""
+    """Get trip details itinerary."""
     if db is None:
         # Return mock data if database not connected
         mock_data = MOCK_TRIP_DETAILS.copy()
         mock_data["tripID"] = tripID
-        return TripDetails(**mock_data)
+        return TripDetailsItinerary(**mock_data)
     
     # Check if trip exists
     trip = await db.trips.find_one({"tripID": tripID})
@@ -807,16 +894,23 @@ async def get_trip_details(tripID: str):
     if trip_details:
         # Remove MongoDB _id field
         trip_details.pop("_id", None)
-        return TripDetails(**trip_details)
+        # Check if it's the new format (with days) or old format
+        if "days" in trip_details:
+            return TripDetailsItinerary(**trip_details)
+        else:
+            # Old format - return mock data for now
+            mock_data = MOCK_TRIP_DETAILS.copy()
+            mock_data["tripID"] = tripID
+            return TripDetailsItinerary(**mock_data)
     else:
         # Return mock data if no details exist
         mock_data = MOCK_TRIP_DETAILS.copy()
         mock_data["tripID"] = tripID
-        return TripDetails(**mock_data)
+        return TripDetailsItinerary(**mock_data)
 
 @app.put("/trips/{tripID}/details", response_model=dict)
-async def update_trip_details(tripID: str, details: TripDetails):
-    """Update trip details configuration."""
+async def update_trip_details(tripID: str, details: TripDetailsItinerary):
+    """Update trip details itinerary."""
     if db is None:
         raise HTTPException(status_code=503, detail="Database not connected")
     
@@ -828,9 +922,8 @@ async def update_trip_details(tripID: str, details: TripDetails):
     # Ensure tripID matches
     details.tripID = tripID
     
-    # Convert to dict and add updated timestamp
+    # Convert to dict
     details_dict = details.model_dump()
-    details_dict["updatedAt"] = datetime.utcnow().isoformat()
     
     # Upsert trip details
     await db.trip_details.update_one(
