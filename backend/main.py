@@ -1,11 +1,11 @@
 """
 FastAPI backend for Vibecation travel planner application.
 """
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pydantic import field_validator
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 import bcrypt
 import json
