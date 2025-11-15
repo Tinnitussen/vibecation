@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import Overview from './pages/Overview'
 import Suggestions from './pages/Suggestions'
 import Brainstorm from './pages/Brainstorm'
 import TripDetails from './pages/TripDetails'
@@ -25,6 +26,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/trips/:tripID/overview" 
+        element={
+          <ProtectedRoute>
+            <Overview />
           </ProtectedRoute>
         } 
       />
