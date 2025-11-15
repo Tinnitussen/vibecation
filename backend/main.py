@@ -14,7 +14,7 @@ import os
 import secrets
 import string
 from contextlib import asynccontextmanager
-from brainstormchat import brainstorm_chat
+from brainstormchat import brainstorm_chat, create_final_plan
 
 # Database connection
 client: Optional[AsyncIOMotorClient] = None
@@ -98,6 +98,12 @@ class TripInfoResponse(BaseModel):
 
 class DashboardResponse(BaseModel):
     yourTrips: List[str]
+
+class CreateFinalPlanRequest(BaseModel):
+    tripID: str
+    userID: str
+    old_plans: List[List[dict]]
+    poll_results: dict
 
 # Helper functions
 async def get_next_id(collection_name: str) -> str:
@@ -1167,6 +1173,36 @@ async def trip_brinstorm(
             "trip_summary": MOCK_TRIP_SUMMARY
         }
 
+
+@app.post("/create_final_plan")
+async def create_final_plan_endpoint(request: CreateFinalPlanRequest):
+    """
+    Create final plan from multiple suggestions and poll results.
+    Merges multiple trip suggestions and incorporates poll results to create a unified final itinerary.
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Verify trip exists
+    trip = await db.trips.find_one({"tripID": request.tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Verify user is a member of the trip
+    if request.userID not in trip.get("members", []) and request.userID != trip.get("ownerID"):
+        raise HTTPException(status_code=403, detail="User is not a member of this trip")
+    
+    # Validate that old_plans is not empty
+    if not request.old_plans or len(request.old_plans) == 0:
+        raise HTTPException(status_code=400, detail="At least one trip plan is required")
+    
+    try:
+        # Call the create_final_plan function
+        result = create_final_plan(request.old_plans, request.poll_results)
+        return result
+    except Exception as e:
+        print(f"Error in create_final_plan_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create final plan: {str(e)}")
 
 @app.post("/post_trip_suggestion")
 async def post_trip_suggestion(suggestion_data: dict):

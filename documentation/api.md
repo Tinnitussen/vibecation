@@ -190,6 +190,73 @@ paths:
         '400':
           description: Invalid parameters
 
+  /create_final_plan:
+    post:
+      summary: Create final plan from multiple suggestions and poll results
+      description: |
+        Generate a final trip plan by merging multiple trip suggestions and incorporating poll results.
+        Takes a list of old_plan arrays (from different suggestions) and poll results to create a unified final itinerary.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tripID
+                - userID
+                - old_plans
+                - poll_results
+              properties:
+                tripID:
+                  type: string
+                  description: Unique identifier for the trip
+                userID:
+                  type: string
+                  description: Unique identifier for the user
+                old_plans:
+                  type: array
+                  description: List of trip plan arrays (each plan is an array of VibecationDay)
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VibecationDay'
+                poll_results:
+                  type: object
+                  description: JSON object containing poll results (activities, locations, cuisines, etc.)
+                  properties:
+                    activities:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Activity'
+                    locations:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Location'
+                    cuisines:
+                      type: array
+                      items:
+                        type: string
+      responses:
+        '200':
+          description: Final trip plan generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VibecationDay'
+                  trip_summary:
+                    type: string
+                    description: A comprehensive description of the final trip and activities
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Trip not found
+
   /post_trip_suggestion:
     post:
       summary: Submit a trip suggestion
@@ -542,6 +609,100 @@ paths:
           description: Itinerary updated successfully
         '400':
           description: Invalid request data
+        '404':
+          description: Trip not found
+
+  /trips/{tripID}/map:
+    get:
+      summary: Get trip map data
+      description: Retrieve optimized map data for a trip including all locations and activities with coordinates for map visualization
+      parameters:
+        - name: tripID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Map data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locations:
+                    type: array
+                    description: All unique locations in the trip with coordinates
+                    items:
+                      type: object
+                      properties:
+                        location_id:
+                          type: string
+                        name:
+                          type: string
+                        lat:
+                          type: number
+                          format: float
+                        lon:
+                          type: number
+                          format: float
+                        location_type:
+                          type: string
+                          description: Type of location (city, activity, accommodation, etc.)
+                  activities:
+                    type: array
+                    description: All activities with their locations and coordinates
+                    items:
+                      type: object
+                      properties:
+                        activity_id:
+                          type: string
+                        activity_name:
+                          type: string
+                        day_id:
+                          type: integer
+                          description: Day number in the itinerary
+                        date:
+                          type: string
+                          format: date
+                        start_lat:
+                          type: number
+                          format: float
+                        start_lon:
+                          type: number
+                          format: float
+                        end_lat:
+                          type: number
+                          format: float
+                        end_lon:
+                          type: number
+                          format: float
+                        location:
+                          type: string
+                        activity_type:
+                          type: string
+                        from_date_time:
+                          type: string
+                          format: date-time
+                        to_date_time:
+                          type: string
+                          format: date-time
+                  bounds:
+                    type: object
+                    description: Bounding box for all locations (for map fitting)
+                    properties:
+                      north:
+                        type: number
+                        format: float
+                      south:
+                        type: number
+                        format: float
+                      east:
+                        type: number
+                        format: float
+                      west:
+                        type: number
+                        format: float
         '404':
           description: Trip not found
 

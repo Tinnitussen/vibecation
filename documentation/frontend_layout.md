@@ -411,6 +411,62 @@ This document describes the frontend component structure and layout for the Vibe
   - Weather information (read-only, if API available)
   - Time zone information (read-only)
 
+#### `MapViewSection`
+- **Type**: Map component section
+- **Location**: After AdditionalDetailsSection or as a separate tab/view toggle
+- **Layout**: Full-width map container with controls
+- **Sub-components**:
+
+  ##### `MapView`
+  - **Type**: Interactive map component
+  - **Props**: `tripID`, `itinerary` (optional, fetched if not provided)
+  - **Content**:
+    - Interactive map showing all trip locations and activities
+    - Markers for each activity location (color-coded by day or activity type)
+    - Markers for accommodation locations (if available)
+    - Route visualization connecting activities in chronological order
+    - Day grouping/clustering option
+    - Zoom controls and map type selector (map, satellite, terrain)
+  - **Features**:
+    - Click on marker to show activity details popup
+    - Toggle visibility by day (show/hide specific days)
+    - Toggle visibility by activity type
+    - Fit bounds to show all locations
+    - Center on specific day/location
+    - Draw route between activities (if applicable)
+  - **API Calls**:
+    - `GET /trips/{tripID}/itinerary` to fetch itinerary with locations
+    - `GET /trips/{tripID}/map` to fetch optimized map data (locations with coordinates)
+  - **Library**: Google Maps, Mapbox, or Leaflet
+  - **Styling**: 
+    - Full-width container with configurable height (default: 600px)
+    - Responsive: Full height on mobile, fixed height on desktop
+    - Border radius: 8px
+    - Shadow: Medium shadow
+
+  ##### `MapControls`
+  - **Type**: Control panel component
+  - **Location**: Overlay on map (top-right or sidebar)
+  - **Controls**:
+    - Day filter (checkboxes to show/hide specific days)
+    - Activity type filter (checkboxes for activity types)
+    - Route toggle (show/hide route lines)
+    - Marker clustering toggle
+    - Reset view button (fit all markers)
+    - Map type selector (map/satellite/terrain)
+
+  ##### `ActivityMarkerPopup`
+  - **Type**: Popup component
+  - **Trigger**: Click on map marker
+  - **Content**:
+    - Activity name
+    - Activity type badge
+    - Date and time
+    - Location name
+    - Brief description
+    - "View Details" link (opens activity detail modal)
+    - "Directions" button (opens external maps app)
+
 #### `SaveButton`
 - **Type**: Button component
 - **Location**: Sticky footer or bottom of form
