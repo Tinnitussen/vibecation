@@ -330,6 +330,26 @@
   box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
 }
 
+.btn-details {
+  padding: 8px 16px;
+  background: transparent;
+  color: #9C27B0;
+  border: 1px solid #9C27B0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn-details:hover {
+  background: linear-gradient(135deg, #9C27B0 0%, #FF00FF 100%);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+}
+
 .fab {
   position: fixed;
   bottom: 32px;

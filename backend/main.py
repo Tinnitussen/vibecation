@@ -15,7 +15,7 @@ import os
 import secrets
 import string
 from contextlib import asynccontextmanager
-from brainstormchat import brainstorm_chat
+from brainstormchat import brainstorm_chat, create_final_plan
 
 # Database connection
 client: Optional[AsyncIOMotorClient] = None
@@ -99,6 +99,193 @@ class TripInfoResponse(BaseModel):
 
 class DashboardResponse(BaseModel):
     yourTrips: List[str]
+
+class CreateFinalPlanRequest(BaseModel):
+    tripID: str
+    userID: str
+    old_plans: List[List[dict]]
+    poll_results: dict
+
+# Trip Details Models
+class Accommodation(BaseModel):
+    id: Optional[str] = None
+    name: str
+    type: str  # hotel, apartment, hostel, resort, villa, Airbnb, other
+    checkIn: Optional[str] = None  # date string
+    checkOut: Optional[str] = None  # date string
+    address: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    phone: Optional[str] = None
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    notes: Optional[str] = None
+
+class Flight(BaseModel):
+    id: Optional[str] = None
+    type: str  # outbound, return, connecting
+    departureAirport: Optional[str] = None
+    arrivalAirport: Optional[str] = None
+    departureDateTime: Optional[str] = None  # datetime string
+    arrivalDateTime: Optional[str] = None  # datetime string
+    airline: Optional[str] = None
+    flightNumber: Optional[str] = None
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    seatAssignments: Optional[str] = None
+    notes: Optional[str] = None
+
+class RentalCar(BaseModel):
+    hasRentalCar: bool = False
+    company: Optional[str] = None
+    pickupLocation: Optional[str] = None
+    pickupDateTime: Optional[str] = None  # datetime string
+    dropoffLocation: Optional[str] = None
+    dropoffDateTime: Optional[str] = None  # datetime string
+    carType: Optional[str] = None  # economy, compact, midsize, SUV, luxury
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+
+class PublicTransport(BaseModel):
+    passes: List[str] = []  # metro, bus, train, ferry
+    details: Optional[str] = None
+
+class Transportation(BaseModel):
+    flights: List[Flight] = []
+    rentalCar: Optional[RentalCar] = None
+    publicTransport: Optional[PublicTransport] = None
+    other: Optional[str] = None
+
+class PassportInfo(BaseModel):
+    required: bool = False
+    expirationDate: Optional[str] = None  # date string
+    minimumValidityMonths: Optional[int] = None
+    notes: Optional[str] = None
+
+class VisaInfo(BaseModel):
+    required: bool = False
+    type: Optional[str] = None  # tourist, business, transit, other
+    applicationDate: Optional[str] = None  # date string
+    approvalDate: Optional[str] = None  # date string
+    visaNumber: Optional[str] = None
+    notes: Optional[str] = None
+
+class TravelInsurance(BaseModel):
+    hasInsurance: bool = False
+    provider: Optional[str] = None
+    policyNumber: Optional[str] = None
+    coverageAmount: Optional[float] = None
+    currency: Optional[str] = None
+    emergencyContact: Optional[str] = None
+    notes: Optional[str] = None
+
+class EmergencyContact(BaseModel):
+    id: Optional[str] = None
+    name: str
+    relationship: Optional[str] = None
+    phone: str
+    email: Optional[str] = None
+    notes: Optional[str] = None
+
+class TravelDocuments(BaseModel):
+    passport: Optional[PassportInfo] = None
+    visa: Optional[VisaInfo] = None
+    travelInsurance: Optional[TravelInsurance] = None
+    emergencyContacts: List[EmergencyContact] = []
+
+class BudgetBreakdown(BaseModel):
+    accommodation: Optional[float] = None
+    food: Optional[float] = None
+    activities: Optional[float] = None
+    transportation: Optional[float] = None
+    shopping: Optional[float] = None
+    miscellaneous: Optional[float] = None
+
+class Expense(BaseModel):
+    id: Optional[str] = None
+    date: str  # date string
+    category: str  # accommodation, food, activities, transportation, shopping, miscellaneous
+    description: Optional[str] = None
+    amount: float
+
+class Budget(BaseModel):
+    total: Optional[float] = None
+    currency: Optional[str] = None
+    breakdown: Optional[BudgetBreakdown] = None
+    expenses: List[Expense] = []
+
+class PackingItem(BaseModel):
+    id: Optional[str] = None
+    item: str
+    packed: bool = False
+
+class ImportantNote(BaseModel):
+    id: Optional[str] = None
+    content: str
+    createdAt: Optional[str] = None  # datetime string
+
+class CurrentWeather(BaseModel):
+    temperature: Optional[float] = None
+    condition: Optional[str] = None
+    humidity: Optional[float] = None
+
+class WeatherForecast(BaseModel):
+    date: str  # date string
+    high: Optional[float] = None
+    low: Optional[float] = None
+    condition: Optional[str] = None
+
+class WeatherInfo(BaseModel):
+    current: Optional[CurrentWeather] = None
+    forecast: List[WeatherForecast] = []
+
+class TimeZoneInfo(BaseModel):
+    destination: Optional[str] = None
+    offset: Optional[str] = None
+    differenceFromHome: Optional[str] = None
+
+class AdditionalDetails(BaseModel):
+    packingList: List[PackingItem] = []
+    importantNotes: List[ImportantNote] = []
+    weather: Optional[WeatherInfo] = None
+    timeZone: Optional[TimeZoneInfo] = None
+
+class TripDetails(BaseModel):
+    tripID: str
+    accommodations: List[Accommodation] = []
+    transportation: Optional[Transportation] = None
+    documents: Optional[TravelDocuments] = None
+    budget: Optional[Budget] = None
+    additional: Optional[AdditionalDetails] = None
+    updatedAt: Optional[str] = None  # datetime string
+
+# Trip Details Itinerary Model (for itinerary-based details)
+class ActivityDetail(BaseModel):
+    id: Optional[str] = None
+    activity_id: Optional[str] = None
+    activity_name: str
+    type: str
+    description: str
+    from_date_time: Optional[str] = None
+    to_date_time: Optional[str] = None
+    location: Optional[str] = None
+    vigor: Optional[str] = None
+    start_lat: Optional[float] = None
+    start_lon: Optional[float] = None
+    end_lat: Optional[float] = None
+    end_lon: Optional[float] = None
+
+class DayDetail(BaseModel):
+    id: int
+    date: str
+    location: str
+    description: str
+    activities: List[ActivityDetail] = []
+
+class TripDetailsItinerary(BaseModel):
+    tripID: Optional[str] = None
+    days: List[DayDetail] = []
+    trip_summary: Optional[str] = None
 
 # Helper functions
 async def get_next_id(collection_name: str) -> str:
@@ -572,6 +759,27 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
         "message": "Trip created successfully"
     }
 
+@app.get("/trips/{tripID}", response_model=TripResponse)
+async def get_trip(tripID: str):
+    """Get trip details."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    trip = await db.trips.find_one({"tripID": tripID})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    return TripResponse(
+        tripID=trip["tripID"],
+        title=trip.get("title", ""),
+        description=trip.get("description"),
+        members=trip.get("members", []),
+        ownerID=trip.get("ownerID", ""),
+        createdAt=trip.get("createdAt", datetime.utcnow()),
+        updatedAt=trip.get("updatedAt", datetime.utcnow())
+    )
+
 @app.delete("/trips/{tripID}", status_code=204)
 async def delete_trip(tripID: str):
     """Delete a trip."""
@@ -647,6 +855,306 @@ async def join_trip_by_invite_code(invite_code: str = Query(..., alias="inviteCo
         "title": trip.get("title", ""),
         "message": "Successfully joined trip",
         "alreadyMember": False
+    }
+
+# Mock data for trip details
+MOCK_TRIP_DETAILS = {
+    "days": [
+        {
+            "id": 1,
+            "date": "2024-07-01",
+            "location": "Athens International Airport",
+            "description": "Day 1 in Athens International Airport",
+            "activities": [
+                {
+                    "id": "day1-athens-arrival",
+                    "activity_id": "day1-athens-arrival",
+                    "activity_name": "Arrive in Athens & Explore the Acropolis",
+                    "type": "attraction",
+                    "description": "Arrive at Athens International Airport in the morning, transfer to your hotel, and set out to explore the Acropolis. Visit the Parthenon and the Acropolis Museum. Enjoy a traditional Greek dinner in Plaka in the evening.",
+                    "from_date_time": "2024-07-01T09:00:00+03:00",
+                    "to_date_time": "2024-07-01T18:00:00+03:00",
+                    "location": "Athens International Airport",
+                    "vigor": "medium",
+                    "start_lat": 37.9364,
+                    "start_lon": 23.9445,
+                    "end_lat": 37.9715,
+                    "end_lon": 23.7267
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "date": "2024-07-02",
+            "location": "Hotel in Athens",
+            "description": "Day 2 in Hotel in Athens",
+            "activities": [
+                {
+                    "id": "day2-athens-walk",
+                    "activity_id": "day2-athens-walk",
+                    "activity_name": "Athens City Walk & Plaka Neighborhood",
+                    "type": "attraction",
+                    "description": "Discover Athens highlights: Ancient Agora, Temple of Olympian Zeus, changing of the guard at Syntagma Square. Evening stroll in Plaka, dinner at a taverna.",
+                    "from_date_time": "2024-07-02T09:00:00+03:00",
+                    "to_date_time": "2024-07-02T20:00:00+03:00",
+                    "location": "Hotel in Athens",
+                    "vigor": "medium",
+                    "start_lat": 37.985,
+                    "start_lon": 23.733,
+                    "end_lat": 37.9737,
+                    "end_lon": 23.7306
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "date": "2024-07-03",
+            "location": "Athens",
+            "description": "Day 3 in Athens",
+            "activities": [
+                {
+                    "id": "day3-delphi-trip",
+                    "activity_id": "day3-delphi-trip",
+                    "activity_name": "Day Trip to Delphi",
+                    "type": "travel",
+                    "description": "Take a guided day trip to the ancient site of Delphi. Tour the Temple of Apollo, Theater, and Archaeological Museum. Return to Athens in the evening.",
+                    "from_date_time": "2024-07-03T07:00:00+03:00",
+                    "to_date_time": "2024-07-03T19:00:00+03:00",
+                    "location": "Athens",
+                    "vigor": "low",
+                    "start_lat": 37.9838,
+                    "start_lon": 23.7275,
+                    "end_lat": 38.4839,
+                    "end_lon": 22.501
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "date": "2024-07-04",
+            "location": "Piraeus Port",
+            "description": "Day 4 in Piraeus Port",
+            "activities": [
+                {
+                    "id": "day4-ferry-mykonos",
+                    "activity_id": "day4-ferry-mykonos",
+                    "activity_name": "Ferry to Mykonos & Beach Afternoon",
+                    "type": "travel",
+                    "description": "Take the morning ferry from Piraeus to Mykonos. Check in to your hotel and spend the afternoon relaxing on one of Mykonos's beautiful beaches.",
+                    "from_date_time": "2024-07-04T08:00:00+03:00",
+                    "to_date_time": "2024-07-04T15:00:00+03:00",
+                    "location": "Piraeus Port",
+                    "vigor": "low",
+                    "start_lat": 37.9429,
+                    "start_lon": 23.6466,
+                    "end_lat": 37.4467,
+                    "end_lon": 25.3289
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "date": "2024-07-05",
+            "location": "Mykonos Town",
+            "description": "Day 5 in Mykonos Town",
+            "activities": [
+                {
+                    "id": "day5-mykonos-discovery",
+                    "activity_id": "day5-mykonos-discovery",
+                    "activity_name": "Explore Mykonos Town & Beaches",
+                    "type": "attraction",
+                    "description": "Wander through Mykonos Town, see the iconic windmills and Little Venice, then relax at Super Paradise Beach. Enjoy Mykonos nightlife.",
+                    "from_date_time": "2024-07-05T09:00:00+03:00",
+                    "to_date_time": "2024-07-05T20:00:00+03:00",
+                    "location": "Mykonos Town",
+                    "vigor": "medium",
+                    "start_lat": 37.4467,
+                    "start_lon": 25.3289,
+                    "end_lat": 37.4283,
+                    "end_lon": 25.3603
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "date": "2024-07-06",
+            "location": "Mykonos Old Port",
+            "description": "Day 6 in Mykonos Old Port",
+            "activities": [
+                {
+                    "id": "day6-delos-excursion",
+                    "activity_id": "day6-delos-excursion",
+                    "activity_name": "Day Excursion to Delos",
+                    "type": "attraction",
+                    "description": "Join a boat tour from Mykonos Old Port to Delos Island. Guided tour of the UNESCO World Heritage Site, return to Mykonos for the afternoon.",
+                    "from_date_time": "2024-07-06T09:30:00+03:00",
+                    "to_date_time": "2024-07-06T14:00:00+03:00",
+                    "location": "Mykonos Old Port",
+                    "vigor": "medium",
+                    "start_lat": 37.451,
+                    "start_lon": 25.3276,
+                    "end_lat": 37.399,
+                    "end_lon": 25.2678
+                }
+            ]
+        },
+        {
+            "id": 7,
+            "date": "2024-07-07",
+            "location": "Mykonos Port",
+            "description": "Day 7 in Mykonos Port",
+            "activities": [
+                {
+                    "id": "day7-ferry-santorini",
+                    "activity_id": "day7-ferry-santorini",
+                    "activity_name": "Ferry to Santorini & Oia Sunset",
+                    "type": "travel",
+                    "description": "Morning ferry to Santorini, check in to your cliffside hotel. Evening visit to beautiful Oia for the iconic sunset.",
+                    "from_date_time": "2024-07-07T08:00:00+03:00",
+                    "to_date_time": "2024-07-07T17:00:00+03:00",
+                    "location": "Mykonos Port",
+                    "vigor": "low",
+                    "start_lat": 37.454,
+                    "start_lon": 25.345,
+                    "end_lat": 36.4617,
+                    "end_lon": 25.3754
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "date": "2024-07-08",
+            "location": "Fira, Santorini",
+            "description": "Day 8 in Fira, Santorini",
+            "activities": [
+                {
+                    "id": "day8-santorini-explore",
+                    "activity_id": "day8-santorini-explore",
+                    "activity_name": "Santorini Highlights: Akrotiri, Beaches & Winery",
+                    "type": "attraction",
+                    "description": "Tour the Akrotiri Archaeological Site, visit Red Beach and Perissa's black sands, with a wine tasting at a local winery.",
+                    "from_date_time": "2024-07-08T09:00:00+03:00",
+                    "to_date_time": "2024-07-08T20:00:00+03:00",
+                    "location": "Fira, Santorini",
+                    "vigor": "medium",
+                    "start_lat": 36.4167,
+                    "start_lon": 25.4333,
+                    "end_lat": 36.4146,
+                    "end_lon": 25.4556
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "date": "2024-07-09",
+            "location": "Santorini Old Port",
+            "description": "Day 9 in Santorini Old Port",
+            "activities": [
+                {
+                    "id": "day9-catamaran-santorini",
+                    "activity_id": "day9-catamaran-santorini",
+                    "activity_name": "Santorini Catamaran Cruise",
+                    "type": "entertainment",
+                    "description": "Full-day catamaran cruise with stops for swimming, snorkeling, and a seafood lunch on board. Enjoy views of the caldera.",
+                    "from_date_time": "2024-07-09T10:00:00+03:00",
+                    "to_date_time": "2024-07-09T18:30:00+03:00",
+                    "location": "Santorini Old Port",
+                    "vigor": "medium",
+                    "start_lat": 36.419,
+                    "start_lon": 25.428,
+                    "end_lat": 36.419,
+                    "end_lon": 25.428
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "date": "2024-07-10",
+            "location": "Santorini Airport/Port",
+            "description": "Day 10 in Santorini Airport/Port",
+            "activities": [
+                {
+                    "id": "day10-athens-return-departure",
+                    "activity_id": "day10-athens-return-departure",
+                    "activity_name": "Return to Athens & Departure",
+                    "type": "travel",
+                    "description": "Morning flight or ferry back to Athens. If time permits, enjoy some last-minute shopping in the Monastiraki area before your departure.",
+                    "from_date_time": "2024-07-10T07:00:00+03:00",
+                    "to_date_time": "2024-07-10T17:00:00+03:00",
+                    "location": "Santorini Airport/Port",
+                    "vigor": "low",
+                    "start_lat": 36.4035,
+                    "start_lon": 25.4793,
+                    "end_lat": 37.9364,
+                    "end_lon": 23.9445
+                }
+            ]
+        }
+    ],
+    "trip_summary": "This 10-day Greece itinerary offers a perfect blend of ancient history, vibrant island life, and relaxing beaches. Begin your journey in Athens, exploring iconic sites like the Acropolis before venturing on a day trip to the mystical ruins of Delphi. Continue your adventure by ferry to Mykonos with its picturesque town, lively beaches, and a day trip to the archaeological wonder of Delos. Next, experience the awe-inspiring beauty of Santorini—from volcanic beaches and archaeological treasures to the legendary sunset in Oia. Cap off your journey with a catamaran cruise and a relaxed return to Athens for your departure. Perfect for first-time visitors who want to experience the classics and the charms of the islands."
+}
+
+@app.get("/trips/{tripID}/details", response_model=TripDetailsItinerary)
+async def get_trip_details(tripID: str):
+    """Get trip details itinerary."""
+    if db is None:
+        # Return mock data if database not connected
+        mock_data = MOCK_TRIP_DETAILS.copy()
+        mock_data["tripID"] = tripID
+        return TripDetailsItinerary(**mock_data)
+    
+    # Check if trip exists
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Try to get trip details from database
+    trip_details = await db.trip_details.find_one({"tripID": tripID})
+    
+    if trip_details:
+        # Remove MongoDB _id field
+        trip_details.pop("_id", None)
+        # Check if it's the new format (with days) or old format
+        if "days" in trip_details:
+            return TripDetailsItinerary(**trip_details)
+        else:
+            # Old format - return mock data for now
+            mock_data = MOCK_TRIP_DETAILS.copy()
+            mock_data["tripID"] = tripID
+            return TripDetailsItinerary(**mock_data)
+    else:
+        # Return mock data if no details exist
+        mock_data = MOCK_TRIP_DETAILS.copy()
+        mock_data["tripID"] = tripID
+        return TripDetailsItinerary(**mock_data)
+
+@app.put("/trips/{tripID}/details", response_model=dict)
+async def update_trip_details(tripID: str, details: TripDetailsItinerary):
+    """Update trip details itinerary."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Check if trip exists
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Ensure tripID matches
+    details.tripID = tripID
+    
+    # Convert to dict
+    details_dict = details.model_dump()
+    
+    # Upsert trip details
+    await db.trip_details.update_one(
+        {"tripID": tripID},
+        {"$set": details_dict},
+        upsert=True
+    )
+    
+    return {
+        "message": "Trip details updated successfully",
+        "tripDetails": details_dict
     }
 
 # Mock data for suggestions and polls
@@ -1727,6 +2235,36 @@ async def trip_brinstorm(
             "trip_summary": MOCK_TRIP_SUMMARY
         }
 
+
+@app.post("/create_final_plan")
+async def create_final_plan_endpoint(request: CreateFinalPlanRequest):
+    """
+    Create final plan from multiple suggestions and poll results.
+    Merges multiple trip suggestions and incorporates poll results to create a unified final itinerary.
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Verify trip exists
+    trip = await db.trips.find_one({"tripID": request.tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Verify user is a member of the trip
+    if request.userID not in trip.get("members", []) and request.userID != trip.get("ownerID"):
+        raise HTTPException(status_code=403, detail="User is not a member of this trip")
+    
+    # Validate that old_plans is not empty
+    if not request.old_plans or len(request.old_plans) == 0:
+        raise HTTPException(status_code=400, detail="At least one trip plan is required")
+    
+    try:
+        # Call the create_final_plan function
+        result = create_final_plan(request.old_plans, request.poll_results)
+        return result
+    except Exception as e:
+        print(f"Error in create_final_plan_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create final plan: {str(e)}")
 
 @app.post("/post_trip_suggestion")
 async def post_trip_suggestion(suggestion_data: dict):

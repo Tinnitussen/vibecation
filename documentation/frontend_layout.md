@@ -348,77 +348,502 @@ This document describes the frontend component structure and layout for the Vibe
 ## 5. Trip Details Configuration Page (`/trips/{tripID}/details`)
 
 ### Layout
-- **Multi-section form layout**
+- **Multi-section form layout** with collapsible sections
 - **Save button** at bottom (sticky)
+- **Tab or accordion navigation** for different sections
+- **Responsive**: Stacked on mobile, side-by-side on desktop
 
 ### Components
 
 #### `DetailsHeader`
 - **Type**: Header component
 - **Content**:
-  - Trip title
-  - "Back to Overview" button
-  - Save status indicator
+  - Trip title (from trip info)
+  - Breadcrumb: Dashboard > Trip Overview > Details
+  - "Back to Overview" button (navigates to `/trips/{tripID}/overview`)
+  - Save status indicator (unsaved changes, saving, saved)
+- **API Call**: `GET /trips/{tripID}` to fetch trip title
+- **Styling**: Neon purple-pink accent for active state
+
+#### `DetailsNavigation` (Optional)
+- **Type**: Tab/Accordion navigation component
+- **Sections**:
+  1. Accommodation
+  2. Transportation
+  3. Travel Documents
+  4. Budget
+  5. Additional Details
+  6. Map View
+- **Functionality**: Smooth scroll to section or tab-based navigation
 
 #### `AccommodationSection`
 - **Type**: Form section component
+- **Props**: `tripID`, `accommodationData` (from API or mock)
 - **Fields**:
-  - Accommodation name (text input)
-  - Accommodation type (select: hotel, apartment, hostel, etc.)
-  - Check-in date (date picker)
-  - Check-out date (date picker)
-  - Address (text input)
-  - Notes (textarea)
-- **Note**: API endpoints not yet available
+  - Accommodation name (text input, required)
+  - Accommodation type (select dropdown: hotel, apartment, hostel, resort, villa, Airbnb, other)
+  - Check-in date (date picker, required)
+  - Check-out date (date picker, required, must be after check-in)
+  - Address (text input with autocomplete, required)
+  - City (text input)
+  - Country (text input or select)
+  - Phone number (tel input)
+  - Booking reference (text input)
+  - Confirmation number (text input)
+  - Notes (textarea, optional)
+  - Add multiple accommodations button (for multi-city trips)
+- **Validation**:
+  - Check-out must be after check-in
+  - Required fields validation
+- **API Calls**:
+  - `GET /trips/{tripID}/details` to fetch accommodation data
+  - `PUT /trips/{tripID}/details` to save accommodation data
+- **Mock Data Structure**:
+  ```json
+  {
+    "accommodations": [
+      {
+        "id": "acc_001",
+        "name": "Grand Hotel Barcelona",
+        "type": "hotel",
+        "checkIn": "2024-07-15",
+        "checkOut": "2024-07-20",
+        "address": "123 La Rambla",
+        "city": "Barcelona",
+        "country": "Spain",
+        "phone": "+34 93 123 4567",
+        "bookingReference": "GHB-2024-789",
+        "confirmationNumber": "CNF-ABC123",
+        "notes": "Requested room with sea view"
+      }
+    ]
+  }
+  ```
 
 #### `TransportationSection`
 - **Type**: Form section component
+- **Props**: `tripID`, `transportationData` (from API or mock)
 - **Sub-sections**:
 
   ##### `FlightsSubsection`
   - **Fields**:
-    - Outbound flight (departure/arrival airports, date, time, airline, flight number)
-    - Return flight (same fields)
-    - Booking reference (text input)
-    - Confirmation number (text input)
+    - **Outbound Flight**:
+      - Departure airport (text input with autocomplete, required)
+      - Arrival airport (text input with autocomplete, required)
+      - Departure date (date picker, required)
+      - Departure time (time picker, required)
+      - Arrival date (date picker, required)
+      - Arrival time (time picker, required)
+      - Airline (text input)
+      - Flight number (text input)
+      - Booking reference (text input)
+      - Confirmation number (text input)
+      - Seat assignments (text input)
+      - Notes (textarea)
+    - **Return Flight** (same fields as outbound)
+    - Add additional flights button (for multi-leg trips)
+  - **Validation**: Arrival must be after departure
 
   ##### `GroundTransportSubsection`
   - **Fields**:
-    - Rental car (checkbox, details if checked)
-    - Public transport passes (multi-select)
-    - Other transportation notes (textarea)
+    - **Rental Car**:
+      - Has rental car (checkbox)
+      - Rental company (text input, shown if checked)
+      - Pickup location (text input)
+      - Pickup date/time (datetime picker)
+      - Drop-off location (text input)
+      - Drop-off date/time (datetime picker)
+      - Car type (select: economy, compact, midsize, SUV, luxury)
+      - Booking reference (text input)
+      - Confirmation number (text input)
+    - **Public Transport**:
+      - Public transport passes (multi-select checkboxes: metro, bus, train, ferry)
+      - Pass details (textarea for each selected)
+    - **Other Transportation**:
+      - Other transportation notes (textarea)
+      - Add custom transport option button
+  - **API Calls**:
+    - `GET /trips/{tripID}/details` to fetch transportation data
+    - `PUT /trips/{tripID}/details` to save transportation data
+  - **Mock Data Structure**:
+    ```json
+    {
+      "transportation": {
+        "flights": [
+          {
+            "id": "flight_001",
+            "type": "outbound",
+            "departureAirport": "JFK",
+            "arrivalAirport": "BCN",
+            "departureDateTime": "2024-07-15T10:30:00Z",
+            "arrivalDateTime": "2024-07-15T22:15:00Z",
+            "airline": "Iberia",
+            "flightNumber": "IB6251",
+            "bookingReference": "IB-789456",
+            "confirmationNumber": "ABC123XYZ",
+            "seatAssignments": "12A, 12B",
+            "notes": "Window seats requested"
+          },
+          {
+            "id": "flight_002",
+            "type": "return",
+            "departureAirport": "BCN",
+            "arrivalAirport": "JFK",
+            "departureDateTime": "2024-07-20T14:00:00Z",
+            "arrivalDateTime": "2024-07-20T18:30:00Z",
+            "airline": "Iberia",
+            "flightNumber": "IB6252",
+            "bookingReference": "IB-789457",
+            "confirmationNumber": "ABC124XYZ"
+          }
+        ],
+        "rentalCar": {
+          "hasRentalCar": true,
+          "company": "Hertz",
+          "pickupLocation": "Barcelona Airport",
+          "pickupDateTime": "2024-07-15T23:00:00Z",
+          "dropoffLocation": "Barcelona Airport",
+          "dropoffDateTime": "2024-07-20T12:00:00Z",
+          "carType": "midsize",
+          "bookingReference": "HZ-456789",
+          "confirmationNumber": "HZ-CNF-123"
+        },
+        "publicTransport": {
+          "passes": ["metro", "bus"],
+          "details": "10-day metro pass for Barcelona"
+        },
+        "other": "Taxi from airport to hotel"
+      }
+    }
+    ```
 
 #### `TravelDocumentsSection`
 - **Type**: Form section component
+- **Props**: `tripID`, `documentsData` (from API or mock)
 - **Fields**:
-  - Passport requirements (checkbox list)
-  - Visa requirements (checkbox list)
-  - Travel insurance (checkbox, policy number)
-  - Emergency contacts (repeating fields)
+  - **Passport Requirements**:
+    - Valid passport required (checkbox)
+    - Passport expiration date (date picker, shown if checked)
+    - Minimum validity period (number input, months)
+    - Notes (textarea)
+  - **Visa Requirements**:
+    - Visa required (checkbox)
+    - Visa type (select: tourist, business, transit, other)
+    - Visa application date (date picker)
+    - Visa approval date (date picker)
+    - Visa number (text input)
+    - Notes (textarea)
+  - **Travel Insurance**:
+    - Has travel insurance (checkbox)
+    - Insurance provider (text input, shown if checked)
+    - Policy number (text input)
+    - Coverage amount (number input with currency)
+    - Emergency contact number (tel input)
+    - Notes (textarea)
+  - **Emergency Contacts**:
+    - Add emergency contact button
+    - For each contact:
+      - Name (text input, required)
+      - Relationship (text input)
+      - Phone number (tel input, required)
+      - Email (email input)
+      - Notes (textarea)
+  - **API Calls**:
+    - `GET /trips/{tripID}/details` to fetch documents data
+    - `PUT /trips/{tripID}/details` to save documents data
+  - **Mock Data Structure**:
+    ```json
+    {
+      "documents": {
+        "passport": {
+          "required": true,
+          "expirationDate": "2026-12-31",
+          "minimumValidityMonths": 6,
+          "notes": "Passport must be valid for at least 6 months after return date"
+        },
+        "visa": {
+          "required": false,
+          "type": null,
+          "applicationDate": null,
+          "approvalDate": null,
+          "visaNumber": null,
+          "notes": "No visa required for US citizens visiting Spain"
+        },
+        "travelInsurance": {
+          "hasInsurance": true,
+          "provider": "World Nomads",
+          "policyNumber": "WN-2024-789456",
+          "coverageAmount": 50000,
+          "currency": "USD",
+          "emergencyContact": "+1-800-123-4567",
+          "notes": "Covers medical emergencies and trip cancellation"
+        },
+        "emergencyContacts": [
+          {
+            "id": "contact_001",
+            "name": "John Doe",
+            "relationship": "Spouse",
+            "phone": "+1-555-0100",
+            "email": "john.doe@example.com",
+            "notes": "Primary emergency contact"
+          },
+          {
+            "id": "contact_002",
+            "name": "Jane Smith",
+            "relationship": "Sister",
+            "phone": "+1-555-0101",
+            "email": "jane.smith@example.com"
+          }
+        ]
+      }
+    }
+    ```
 
 #### `BudgetSection`
 - **Type**: Form section component
+- **Props**: `tripID`, `budgetData` (from API or mock)
 - **Fields**:
-  - Total budget (number input with currency)
-  - Budget breakdown by category (accommodation, food, activities, transport)
-  - Expense tracker (optional, table component)
+  - **Total Budget**:
+    - Total budget amount (number input with currency selector, required)
+    - Currency (select: USD, EUR, GBP, etc.)
+    - Budget per person (calculated, read-only)
+  - **Budget Breakdown by Category**:
+    - Accommodation (number input with currency)
+    - Food & Dining (number input with currency)
+    - Activities & Entertainment (number input with currency)
+    - Transportation (number input with currency)
+    - Shopping (number input with currency)
+    - Miscellaneous (number input with currency)
+    - Total allocated (calculated, read-only)
+    - Remaining budget (calculated, read-only, highlighted if negative)
+  - **Expense Tracker** (Optional):
+    - Add expense button
+    - Expense table with columns:
+      - Date
+      - Category
+      - Description
+      - Amount
+      - Actions (edit, delete)
+    - Total expenses (calculated)
+    - Budget vs. expenses chart (visual indicator)
+  - **API Calls**:
+    - `GET /trips/{tripID}/details` to fetch budget data
+    - `PUT /trips/{tripID}/details` to save budget data
+  - **Mock Data Structure**:
+    ```json
+    {
+      "budget": {
+        "total": 5000,
+        "currency": "USD",
+        "breakdown": {
+          "accommodation": 1500,
+          "food": 1200,
+          "activities": 1000,
+          "transportation": 800,
+          "shopping": 300,
+          "miscellaneous": 200
+        },
+        "expenses": [
+          {
+            "id": "exp_001",
+            "date": "2024-07-15",
+            "category": "food",
+            "description": "Dinner at restaurant",
+            "amount": 85.50
+          },
+          {
+            "id": "exp_002",
+            "date": "2024-07-16",
+            "category": "activities",
+            "description": "Sagrada Familia tickets",
+            "amount": 45.00
+          }
+        ]
+      }
+    }
+    ```
 
 #### `AdditionalDetailsSection`
 - **Type**: Form section component
+- **Props**: `tripID`, `additionalData` (from API or mock)
 - **Fields**:
-  - Packing list (textarea or tag input)
-  - Important notes (textarea)
-  - Weather information (read-only, if API available)
-  - Time zone information (read-only)
+  - **Packing List**:
+    - Packing list items (tag input or textarea with line breaks)
+    - Suggested items (read-only, based on trip type/location)
+    - Add item button
+    - Checkbox list for packing status
+  - **Important Notes**:
+    - Important notes (textarea, rich text editor optional)
+    - Add note button
+    - Notes list with timestamps
+  - **Weather Information** (Read-only):
+    - Current weather (if API available)
+    - Forecast for trip dates
+    - Average temperatures
+    - Weather icon/visualization
+  - **Time Zone Information** (Read-only):
+    - Destination time zone
+    - Time difference from home
+    - Current time at destination
+  - **API Calls**:
+    - `GET /trips/{tripID}/details` to fetch additional data
+    - `PUT /trips/{tripID}/details` to save additional data
+  - **Mock Data Structure**:
+    ```json
+    {
+      "additional": {
+        "packingList": [
+          { "id": "item_001", "item": "Passport", "packed": true },
+          { "id": "item_002", "item": "Travel adapter", "packed": false },
+          { "id": "item_003", "item": "Sunscreen SPF 50", "packed": false },
+          { "id": "item_004", "item": "Comfortable walking shoes", "packed": true }
+        ],
+        "importantNotes": [
+          {
+            "id": "note_001",
+            "content": "Remember to exchange currency at airport",
+            "createdAt": "2024-07-10T10:00:00Z"
+          },
+          {
+            "id": "note_002",
+            "content": "Check-in time is 3 PM, early check-in available for fee",
+            "createdAt": "2024-07-11T14:30:00Z"
+          }
+        ],
+        "weather": {
+          "current": {
+            "temperature": 28,
+            "condition": "Sunny",
+            "humidity": 65
+          },
+          "forecast": [
+            {
+              "date": "2024-07-15",
+              "high": 30,
+              "low": 22,
+              "condition": "Sunny"
+            }
+          ]
+        },
+        "timeZone": {
+          "destination": "Europe/Madrid",
+          "offset": "+2:00",
+          "differenceFromHome": "+6 hours"
+        }
+      }
+    }
+    ```
+
+#### `MapViewSection`
+- **Type**: Map component section
+- **Location**: After AdditionalDetailsSection or as a separate tab/view toggle
+- **Layout**: Full-width map container with controls
+- **Sub-components**:
+
+  ##### `MapView`
+  - **Type**: Interactive map component
+  - **Props**: `tripID`, `itinerary` (optional, fetched if not provided)
+  - **Content**:
+    - Interactive map showing all trip locations and activities
+    - Markers for each activity location (color-coded by day or activity type)
+    - Markers for accommodation locations (if available)
+    - Route visualization connecting activities in chronological order
+    - Day grouping/clustering option
+    - Zoom controls and map type selector (map, satellite, terrain)
+  - **Features**:
+    - Click on marker to show activity details popup
+    - Toggle visibility by day (show/hide specific days)
+    - Toggle visibility by activity type
+    - Fit bounds to show all locations
+    - Center on specific day/location
+    - Draw route between activities (if applicable)
+  - **API Calls**:
+    - `GET /trips/{tripID}/itinerary` to fetch itinerary with locations
+    - `GET /trips/{tripID}/map` to fetch optimized map data (locations with coordinates)
+  - **Library**: Google Maps, Mapbox, or Leaflet
+  - **Styling**: 
+    - Full-width container with configurable height (default: 600px)
+    - Responsive: Full height on mobile, fixed height on desktop
+    - Border radius: 8px
+    - Shadow: Medium shadow
+
+  ##### `MapControls`
+  - **Type**: Control panel component
+  - **Location**: Overlay on map (top-right or sidebar)
+  - **Controls**:
+    - Day filter (checkboxes to show/hide specific days)
+    - Activity type filter (checkboxes for activity types)
+    - Route toggle (show/hide route lines)
+    - Marker clustering toggle
+    - Reset view button (fit all markers)
+    - Map type selector (map/satellite/terrain)
+
+  ##### `ActivityMarkerPopup`
+  - **Type**: Popup component
+  - **Trigger**: Click on map marker
+  - **Content**:
+    - Activity name
+    - Activity type badge
+    - Date and time
+    - Location name
+    - Brief description
+    - "View Details" link (opens activity detail modal)
+    - "Directions" button (opens external maps app)
 
 #### `SaveButton`
 - **Type**: Button component
 - **Location**: Sticky footer or bottom of form
+- **Props**: `onSave`, `isSaving`, `hasUnsavedChanges`
 - **Functionality**:
-  - Validates form
-  - Shows loading state
-  - Displays success/error message
-  - **Note**: API endpoints not yet available, so this would be a placeholder
+  - Validates all form sections
+  - Shows loading state while saving
+  - Displays success/error message via toast
+  - Disabled if no changes or validation errors
+  - Auto-save indicator (optional)
+- **API Call**: `PUT /trips/{tripID}/details` to save all details
+- **Styling**: Primary button with neon purple-pink gradient, sticky positioning
+
+#### `FormValidation`
+- **Type**: Validation utility/component
+- **Functionality**:
+  - Validates all form sections
+  - Shows error messages inline
+  - Highlights invalid fields
+  - Prevents save if validation fails
+- **Validation Rules**:
+  - Required fields must be filled
+  - Dates must be valid and in correct order
+  - Email addresses must be valid format
+  - Phone numbers must be valid format
+  - Budget amounts must be positive numbers
+  - Check-out date must be after check-in date
+
+### Mock Data Structure (Complete)
+```json
+{
+  "tripID": "trip_001",
+  "accommodations": [...],
+  "transportation": {...},
+  "documents": {...},
+  "budget": {...},
+  "additional": {...},
+  "updatedAt": "2024-07-12T10:30:00Z"
+}
+```
+
+### State Management
+- **Form State**: Local state for all form fields
+- **Validation State**: Track validation errors per field
+- **Save State**: Track saving status and unsaved changes
+- **API State**: Loading, error states for API calls
+- **Initial Load**: Fetch existing details on mount, populate form
+
+### User Experience
+- **Auto-save**: Optional auto-save every 30 seconds (if enabled)
+- **Unsaved Changes Warning**: Warn user if navigating away with unsaved changes
+- **Section Collapse**: Allow collapsing/expanding sections
+- **Progress Indicator**: Show completion percentage of filled sections
+- **Responsive Design**: Mobile-friendly form layout
 
 ---
 
