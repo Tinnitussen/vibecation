@@ -1442,6 +1442,191 @@ async def vote_location(vote_data: dict):
                     }
             raise HTTPException(status_code=500, detail=f"Failed to record vote: {str(e)}")
 
+@app.post("/polls/finish_voting")
+async def finish_voting(finish_data: dict):
+    """Mark a user as finished voting for a trip."""
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = finish_data.get("tripID")
+    userID = finish_data.get("userID")
+    
+    if not all([tripID, userID]):
+        raise HTTPException(status_code=400, detail="Missing required fields: tripID, userID")
+    
+    # Use polling_completion collection to track which users have finished
+    completion_collection = db.polling_completion
+    
+    # Check if already marked as complete
+    existing = await completion_collection.find_one({
+        "tripID": tripID,
+        "userID": userID
+    })
+    
+    if existing:
+        return {
+            "message": "User already marked as finished voting",
+            "alreadyCompleted": True
+        }
+    
+    # Mark user as finished
+    completion_doc = {
+        "tripID": tripID,
+        "userID": userID,
+        "completedAt": datetime.utcnow()
+    }
+    
+    await completion_collection.insert_one(completion_doc)
+    
+    return {
+        "message": "Voting marked as complete",
+        "alreadyCompleted": False
+    }
+
+@app.get("/check_polling_completion")
+async def check_polling_completion(tripID: str = Query(...)):
+    """Check if all trip members have finished voting."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Get trip info to get all members
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    members = trip.get("members", [])
+    if not members:
+        return {
+            "allCompleted": False,
+            "totalMembers": 0,
+            "completedMembers": 0,
+            "completedUserIDs": []
+        }
+    
+    # Get all users who have finished voting
+    completion_collection = db.polling_completion
+    completed_users = await completion_collection.find({
+        "tripID": tripID
+    }).to_list(length=100)
+    
+    completed_user_ids = [c["userID"] for c in completed_users]
+    completed_count = len(set(completed_user_ids))
+    
+    return {
+        "allCompleted": completed_count >= len(members),
+        "totalMembers": len(members),
+        "completedMembers": completed_count,
+        "completedUserIDs": list(set(completed_user_ids)),
+        "allMemberIDs": members
+    }
+
+@app.post("/polls/finalize")
+async def finalize_polls(finalize_data: dict):
+    """Finalize polling results and persist to polls collection when all users have finished voting."""
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    tripID = finalize_data.get("tripID")
+    
+    if not tripID:
+        raise HTTPException(status_code=400, detail="Missing required field: tripID")
+    
+    # Check if all users have finished voting
+    completion_status = await check_polling_completion(tripID)
+    if not completion_status["allCompleted"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Not all users have finished voting. {completion_status['completedMembers']}/{completion_status['totalMembers']} completed"
+        )
+    
+    # Check if polls already finalized
+    polls_collection = db.polls
+    existing_polls = await polls_collection.find({
+        "tripID": tripID,
+        "status": "completed"
+    }).to_list(length=10)
+    
+    if existing_polls:
+        return {
+            "message": "Polls already finalized",
+            "alreadyFinalized": True,
+            "pollIDs": [p["pollID"] for p in existing_polls]
+        }
+    
+    # Get all votes for this trip
+    votes_collection = db.votes
+    all_votes = await votes_collection.find({
+        "tripID": tripID
+    }).to_list(length=10000)
+    
+    # Aggregate votes by poll type
+    poll_types = ["activity", "location", "food_cuisine"]
+    created_polls = []
+    
+    for poll_type in poll_types:
+        # Filter votes for this poll type
+        type_votes = [v for v in all_votes if v.get("voteType") == poll_type]
+        
+        if not type_votes:
+            continue
+        
+        # Aggregate votes by optionID
+        option_votes = {}
+        for vote in type_votes:
+            option_id = vote.get("optionID")
+            if not option_id:
+                continue
+            
+            if option_id not in option_votes:
+                option_votes[option_id] = {
+                    "upvotes": 0,
+                    "downvotes": 0,
+                    "optionID": option_id
+                }
+            
+            if vote.get("vote") is True:
+                option_votes[option_id]["upvotes"] += 1
+            elif vote.get("vote") is False:
+                option_votes[option_id]["downvotes"] += 1
+        
+        # Create poll options with aggregated data
+        options = []
+        for option_id, counts in option_votes.items():
+            net_score = counts["upvotes"] - counts["downvotes"]
+            options.append({
+                "optionID": option_id,
+                "upvotes": counts["upvotes"],
+                "downvotes": counts["downvotes"],
+                "netScore": net_score
+            })
+        
+        # Generate pollID
+        poll_count = await polls_collection.count_documents({})
+        pollID = f"poll_{str(poll_count + 1).zfill(3)}"
+        
+        # Create poll document
+        poll_doc = {
+            "pollID": pollID,
+            "tripID": tripID,
+            "pollType": poll_type,
+            "status": "completed",
+            "options": options,
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow(),
+            "closedAt": datetime.utcnow(),
+            "totalVotes": len(type_votes)
+        }
+        
+        await polls_collection.insert_one(poll_doc)
+        created_polls.append(pollID)
+    
+    return {
+        "message": "Polls finalized successfully",
+        "alreadyFinalized": False,
+        "pollIDs": created_polls,
+        "pollsCreated": len(created_polls)
+    }
+
 # Mock data for brainstorm
 MOCK_DAYS = [
     {
