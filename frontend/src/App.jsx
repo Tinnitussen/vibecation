@@ -4,6 +4,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Suggestions from './pages/Suggestions'
 import Brainstorm from './pages/Brainstorm'
+import Overview from './pages/Overview'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 
@@ -40,6 +41,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Brainstorm />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/trips/:tripID/overview" 
+        element={
+          <ProtectedRoute>
+            <Overview />
           </ProtectedRoute>
         } 
       />

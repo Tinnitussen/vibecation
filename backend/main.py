@@ -320,6 +320,137 @@ async def check_brainstorm_completion(tripID: str = Query(...)):
         "allMemberIDs": members
     }
 
+@app.get("/trips/{tripID}/overview")
+async def get_trip_overview(tripID: str):
+    """Get trip overview with decisions (top activities, locations, cuisines)."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Get trip info
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Get all votes for this trip
+    votes_collection = db.votes
+    all_votes = await votes_collection.find({
+        "tripID": tripID
+    }).to_list(length=10000)
+    
+    # Aggregate activity votes
+    activity_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "activity":
+            activity_id = vote.get("optionID")
+            if activity_id not in activity_votes:
+                activity_votes[activity_id] = {"upvotes": 0, "downvotes": 0}
+            if vote.get("vote", True):
+                activity_votes[activity_id]["upvotes"] += 1
+            else:
+                activity_votes[activity_id]["downvotes"] += 1
+    
+    # Aggregate location votes
+    location_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "location":
+            location_id = vote.get("optionID")
+            if location_id not in location_votes:
+                location_votes[location_id] = {"upvotes": 0, "downvotes": 0}
+            if vote.get("vote", True):
+                location_votes[location_id]["upvotes"] += 1
+            else:
+                location_votes[location_id]["downvotes"] += 1
+    
+    # Aggregate cuisine votes
+    cuisine_votes = {}
+    for vote in all_votes:
+        if vote.get("voteType") == "food_cuisine":
+            cuisine_name = vote.get("optionID") or vote.get("voteValue")
+            if cuisine_name:
+                if cuisine_name not in cuisine_votes:
+                    cuisine_votes[cuisine_name] = {"votes": 0}
+                if vote.get("vote", True):
+                    cuisine_votes[cuisine_name]["votes"] += 1
+    
+    # Get activities from mock data and enrich with votes
+    activities = []
+    for mock_activity in MOCK_ACTIVITIES:
+        activity_id = mock_activity.get("activity_id")
+        counts = activity_votes.get(activity_id, {"upvotes": 0, "downvotes": 0})
+        net_score = counts["upvotes"] - counts["downvotes"]
+        
+        activity = {
+            **mock_activity,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "net_score": net_score
+        }
+        activities.append(activity)
+    
+    # Get locations from mock data and enrich with votes
+    locations = []
+    for mock_location in MOCK_LOCATIONS:
+        location_id = mock_location.get("location_id")
+        counts = location_votes.get(location_id, {"upvotes": 0, "downvotes": 0})
+        net_score = counts["upvotes"] - counts["downvotes"]
+        
+        location = {
+            **mock_location,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "net_score": net_score
+        }
+        locations.append(location)
+    
+    # Get cuisines from mock data and enrich with votes
+    cuisines = []
+    for mock_cuisine in MOCK_CUISINES:
+        cuisine_name = mock_cuisine.get("name")
+        votes = cuisine_votes.get(cuisine_name, {"votes": 0})["votes"]
+        
+        cuisine = {
+            **mock_cuisine,
+            "votes": votes
+        }
+        cuisines.append(cuisine)
+    
+    # Calculate top items (sorted by net score, descending)
+    top_activities = sorted(
+        [a for a in activities if a["net_score"] > 0],
+        key=lambda x: x["net_score"],
+        reverse=True
+    )[:10]  # Top 10
+    
+    top_locations = sorted(
+        [l for l in locations if l["net_score"] > 0],
+        key=lambda x: x["net_score"],
+        reverse=True
+    )[:10]  # Top 10
+    
+    top_cuisines = sorted(
+        [c for c in cuisines if c["votes"] > 0],
+        key=lambda x: x["votes"],
+        reverse=True
+    )[:10]  # Top 10
+    
+    # Calculate total votes
+    total_votes = len(all_votes)
+    
+    return {
+        "trip": {
+            "title": trip.get("title", ""),
+            "description": trip.get("description"),
+            "members": trip.get("members", []),
+            "status": trip.get("status", "planning")
+        },
+        "decisions": {
+            "top_activities": top_activities,
+            "top_locations": top_locations,
+            "top_cuisines": top_cuisines,
+            "total_votes": total_votes
+        }
+    }
+
 @app.post("/createtrip", response_model=dict, status_code=201)
 async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
     """Create a new trip."""
