@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
+import TripChat from '../components/TripChat'
 import './Overview.css'
 
 function Overview() {
@@ -16,11 +17,13 @@ function Overview() {
   const [inviteCode, setInviteCode] = useState(null)
   const [loadingInviteCode, setLoadingInviteCode] = useState(false)
   const [brainstormStatus, setBrainstormStatus] = useState(null)
+  const [pollingStatus, setPollingStatus] = useState(null)
 
   useEffect(() => {
     loadOverviewData()
     loadInviteCode()
     checkBrainstormCompletion()
+    checkPollingCompletion()
   }, [tripID, userID])
 
   const loadInviteCode = async () => {
@@ -65,6 +68,19 @@ function Overview() {
     }
   }
 
+  const checkPollingCompletion = async () => {
+    try {
+      const response = await apiClient.get('/check_polling_completion', {
+        params: { tripID }
+      })
+      setPollingStatus(response.data)
+    } catch (err) {
+      console.error('Failed to check polling completion:', err)
+      // Default to not completed for backward compatibility
+      setPollingStatus({ allCompleted: false })
+    }
+  }
+
   const getActivityTypeColor = (type) => {
     const colors = {
       sightseeing: '#9C27B0',
@@ -90,7 +106,8 @@ function Overview() {
 
   // Determine current phase
   const isBrainstormComplete = brainstormStatus?.allCompleted || false
-  const currentPhase = isBrainstormComplete ? 'suggestions' : 'brainstorm'
+  const isSuggestionsComplete = pollingStatus?.allCompleted || false
+  const currentPhase = isSuggestionsComplete ? 'details' : (isBrainstormComplete ? 'suggestions' : 'brainstorm')
 
   if (loading) {
     return (
@@ -139,7 +156,9 @@ function Overview() {
 
   return (
     <div className="overview-page">
-      <header className="overview-header">
+      <div className="overview-layout">
+        <div className="overview-content">
+          <header className="overview-header">
         <div className="header-top-actions">
           <button 
             className="btn-home"
@@ -175,21 +194,25 @@ function Overview() {
             </div>
             <div className="phase-connector"></div>
             <div 
-              className={`phase-item ${currentPhase === 'suggestions' ? 'active clickable' : ''} ${isBrainstormComplete ? 'clickable' : 'disabled'}`}
+              className={`phase-item ${currentPhase === 'suggestions' ? 'active clickable' : ''} ${isBrainstormComplete ? 'clickable' : 'disabled'} ${isSuggestionsComplete ? 'completed clickable' : ''}`}
               onClick={isBrainstormComplete ? () => navigate(`/trips/${tripID}/suggestions`) : undefined}
             >
               <div className="phase-number">2</div>
               <div className="phase-content">
                 <div className="phase-name">Suggestions</div>
-                {isBrainstormComplete && <div className="phase-subtitle">Vote on activities</div>}
+                {isBrainstormComplete && !isSuggestionsComplete && <div className="phase-subtitle">Vote on activities</div>}
               </div>
+              {isSuggestionsComplete && <div className="phase-check">✓</div>}
             </div>
             <div className="phase-connector"></div>
-            <div className={`phase-item disabled`}>
+            <div 
+              className={`phase-item ${currentPhase === 'details' ? 'active clickable' : ''} ${isSuggestionsComplete ? 'clickable' : 'disabled'}`}
+              onClick={isSuggestionsComplete ? () => navigate(`/trips/${tripID}/details`) : undefined}
+            >
               <div className="phase-number">3</div>
               <div className="phase-content">
                 <div className="phase-name">Details</div>
-                <div className="phase-subtitle">Coming soon</div>
+                {isSuggestionsComplete && <div className="phase-subtitle">View itinerary</div>}
               </div>
             </div>
           </div>
@@ -374,6 +397,11 @@ function Overview() {
           </button>
         </div>
       </main>
+        </div>
+        <aside className="overview-chat-sidebar">
+          <TripChat tripID={tripID} />
+        </aside>
+      </div>
     </div>
   )
 }

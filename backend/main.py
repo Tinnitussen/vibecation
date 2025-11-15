@@ -1,11 +1,11 @@
 """
 FastAPI backend for Vibecation travel planner application.
 """
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pydantic import field_validator
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 import bcrypt
 import json
@@ -20,6 +20,42 @@ from brainstormchat import brainstorm_chat, create_final_plan
 # Database connection
 client: Optional[AsyncIOMotorClient] = None
 db = None
+
+# WebSocket connection manager for chat
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+    
+    async def connect(self, websocket: WebSocket, trip_id: str):
+        await websocket.accept()
+        if trip_id not in self.active_connections:
+            self.active_connections[trip_id] = []
+        self.active_connections[trip_id].append(websocket)
+    
+    def disconnect(self, websocket: WebSocket, trip_id: str):
+        if trip_id in self.active_connections:
+            self.active_connections[trip_id] = [
+                conn for conn in self.active_connections[trip_id] if conn != websocket
+            ]
+            if not self.active_connections[trip_id]:
+                del self.active_connections[trip_id]
+    
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        await websocket.send_json(message)
+    
+    async def broadcast(self, message: dict, trip_id: str, exclude_websocket: Optional[WebSocket] = None):
+        if trip_id in self.active_connections:
+            for connection in self.active_connections[trip_id]:
+                if connection != exclude_websocket:
+                    try:
+                        await connection.send_json(message)
+                    except:
+                        # Connection closed, remove it
+                        self.active_connections[trip_id] = [
+                            conn for conn in self.active_connections[trip_id] if conn != connection
+                        ]
+
+manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -105,6 +141,23 @@ class CreateFinalPlanRequest(BaseModel):
     userID: str
     old_plans: List[List[dict]]
     poll_results: dict
+
+# Chat Models
+class ChatMessage(BaseModel):
+    messageID: Optional[str] = None
+    tripID: str
+    userID: str
+    userName: Optional[str] = None
+    content: str
+    createdAt: Optional[datetime] = None
+
+class ChatMessageResponse(BaseModel):
+    messageID: str
+    tripID: str
+    userID: str
+    userName: Optional[str] = None
+    content: str
+    createdAt: datetime
 
 # Trip Details Models
 class Accommodation(BaseModel):
@@ -2492,6 +2545,159 @@ async def post_trip_suggestion(suggestion_data: dict):
         "message": "Trip suggestion posted successfully",
         "tripSuggestionID": tripSuggestionID
     }
+
+# Chat Endpoints
+@app.websocket("/ws/trips/{tripID}/chat")
+async def websocket_chat_endpoint(websocket: WebSocket, tripID: str):
+    """WebSocket endpoint for real-time trip chat."""
+    await manager.connect(websocket, tripID)
+    
+    # Verify trip exists
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        await manager.send_personal_message({
+            "type": "error",
+            "message": "Trip not found"
+        }, websocket)
+        await websocket.close()
+        return
+    
+    # Store verified userID for this connection
+    verified_userID = None
+    
+    # Helper function to check if user is a member
+    def is_trip_member(user_id, trip_doc):
+        """Check if user is owner or in members list."""
+        trip_owner = trip_doc.get("ownerID")
+        trip_members = trip_doc.get("members", [])
+        # Include owner in members check
+        all_members = list(set([trip_owner] + trip_members)) if trip_owner else trip_members
+        return user_id in all_members
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            
+            # Validate message data
+            message_userID = data.get("userID")
+            content = data.get("content", "").strip()
+            
+            # If this is the first message, verify membership
+            if verified_userID is None:
+                if not message_userID:
+                    await manager.send_personal_message({
+                        "type": "error",
+                        "message": "Missing userID"
+                    }, websocket)
+                    continue
+                
+                # Re-fetch trip to get latest members list (in case user just joined)
+                trip = await db.trips.find_one({"tripID": tripID})
+                if not trip:
+                    await manager.send_personal_message({
+                        "type": "error",
+                        "message": "Trip not found"
+                    }, websocket)
+                    continue
+                
+                # Verify user is a member of the trip
+                if not is_trip_member(message_userID, trip):
+                    await manager.send_personal_message({
+                        "type": "error",
+                        "message": "You are not a member of this trip"
+                    }, websocket)
+                    continue
+                
+                verified_userID = message_userID
+            
+            # Use verified userID for subsequent messages
+            userID = verified_userID
+            
+            if not content:
+                await manager.send_personal_message({
+                    "type": "error",
+                    "message": "Message content cannot be empty"
+                }, websocket)
+                continue
+            
+            # Get user info for display name
+            user = await db.users.find_one({"userID": userID})
+            userName = user.get("name", user.get("username", "Unknown")) if user else "Unknown"
+            
+            # Generate message ID
+            messageID = await get_next_id("chat_messages")
+            
+            # Create message document
+            message_doc = {
+                "messageID": messageID,
+                "tripID": tripID,
+                "userID": userID,
+                "userName": userName,
+                "content": content,
+                "createdAt": datetime.utcnow()
+            }
+            
+            # Save to database
+            await db.chat_messages.insert_one(message_doc)
+            
+            # Prepare message for broadcast
+            message_response = {
+                "type": "message",
+                "messageID": messageID,
+                "tripID": tripID,
+                "userID": userID,
+                "userName": userName,
+                "content": content,
+                "createdAt": message_doc["createdAt"].isoformat()
+            }
+            
+            # Broadcast to all connected clients in this trip (including sender)
+            await manager.broadcast(message_response, tripID, exclude_websocket=None)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, tripID)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        manager.disconnect(websocket, tripID)
+
+@app.get("/trips/{tripID}/chat/messages")
+async def get_chat_messages(tripID: str, userID: str = Query(...), limit: int = Query(50, ge=1, le=200)):
+    """Get chat messages for a trip."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Verify trip exists and user is a member
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Check if user is owner or in members list
+    trip_owner = trip.get("ownerID")
+    trip_members = trip.get("members", [])
+    # Include owner in members check
+    all_members = list(set([trip_owner] + trip_members)) if trip_owner else trip_members
+    
+    if userID not in all_members:
+        raise HTTPException(status_code=403, detail="You are not a member of this trip")
+    
+    # Get messages from database
+    messages = await db.chat_messages.find(
+        {"tripID": tripID}
+    ).sort("createdAt", -1).limit(limit).to_list(length=limit)
+    
+    # Convert to response format
+    message_list = []
+    for msg in reversed(messages):  # Reverse to get chronological order
+        message_list.append({
+            "messageID": msg.get("messageID"),
+            "tripID": msg.get("tripID"),
+            "userID": msg.get("userID"),
+            "userName": msg.get("userName", "Unknown"),
+            "content": msg.get("content"),
+            "createdAt": msg.get("createdAt").isoformat() if msg.get("createdAt") else None
+        })
+    
+    return {"messages": message_list}
 
 if __name__ == "__main__":
     import uvicorn
