@@ -158,7 +158,10 @@ function Overview() {
           
           {/* Phase Status Indicator */}
           <div className="phase-status">
-            <div className={`phase-item ${currentPhase === 'brainstorm' ? 'active' : ''} ${isBrainstormComplete ? 'completed' : ''}`}>
+            <div 
+              className={`phase-item ${currentPhase === 'brainstorm' ? 'active clickable' : ''} ${isBrainstormComplete ? 'completed clickable' : ''}`}
+              onClick={() => navigate(`/trips/${tripID}/brainstorm`)}
+            >
               <div className="phase-number">1</div>
               <div className="phase-content">
                 <div className="phase-name">Brainstorm</div>
@@ -171,7 +174,10 @@ function Overview() {
               {isBrainstormComplete && <div className="phase-check">✓</div>}
             </div>
             <div className="phase-connector"></div>
-            <div className={`phase-item ${currentPhase === 'suggestions' ? 'active' : ''} ${isBrainstormComplete ? '' : 'disabled'}`}>
+            <div 
+              className={`phase-item ${currentPhase === 'suggestions' ? 'active clickable' : ''} ${isBrainstormComplete ? 'clickable' : 'disabled'}`}
+              onClick={isBrainstormComplete ? () => navigate(`/trips/${tripID}/suggestions`) : undefined}
+            >
               <div className="phase-number">2</div>
               <div className="phase-content">
                 <div className="phase-name">Suggestions</div>

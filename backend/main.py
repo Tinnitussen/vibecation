@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import bcrypt
 import json
+import hashlib
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import secrets
@@ -372,35 +373,123 @@ async def get_trip_overview(tripID: str):
                 if vote.get("vote", True):
                     cuisine_votes[cuisine_name]["votes"] += 1
     
-    # Get activities from mock data and enrich with votes
+    # Get all submitted suggestions for this trip
+    suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).to_list(length=100)
+    
+    # Extract all activities from suggestions
+    all_activities_dict = {}
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            activities_list = day.get("activities", [])
+            for activity in activities_list:
+                activity_id = activity.get("activity_id")
+                if not activity_id:
+                    activity_key = f"{activity.get('activity_name', '')}_{activity.get('type', '')}_{activity.get('location', '')}"
+                    activity_id = hashlib.md5(activity_key.encode()).hexdigest()[:12]
+                    activity_id = f"act_{activity_id}"
+                
+                if activity_id not in all_activities_dict:
+                    all_activities_dict[activity_id] = {
+                        "activity_id": activity_id,
+                        "activity_name": activity.get("activity_name", "Unnamed Activity"),
+                        "type": activity.get("type", "sightseeing"),
+                        "description": activity.get("description", activity.get("activity_description", "")),
+                        "vigor": activity.get("vigor", "medium"),
+                        "location": activity.get("location", activity.get("start_location", "")),
+                    }
+    
+    # Enrich with vote data
     activities = []
-    for mock_activity in MOCK_ACTIVITIES:
-        activity_id = mock_activity.get("activity_id")
+    for activity_id, activity in all_activities_dict.items():
         counts = activity_votes.get(activity_id, {"upvotes": 0, "downvotes": 0})
         net_score = counts["upvotes"] - counts["downvotes"]
         
-        activity = {
-            **mock_activity,
+        activity_with_votes = {
+            **activity,
             "upvotes": counts["upvotes"],
             "downvotes": counts["downvotes"],
             "net_score": net_score
         }
-        activities.append(activity)
+        activities.append(activity_with_votes)
     
-    # Get locations from mock data and enrich with votes
+    # Fallback to mock data if no suggestions
+    if not activities:
+        for mock_activity in MOCK_ACTIVITIES:
+            activity_id = mock_activity.get("activity_id")
+            counts = activity_votes.get(activity_id, {"upvotes": 0, "downvotes": 0})
+            net_score = counts["upvotes"] - counts["downvotes"]
+            
+            activity = {
+                **mock_activity,
+                "upvotes": counts["upvotes"],
+                "downvotes": counts["downvotes"],
+                "net_score": net_score
+            }
+            activities.append(activity)
+    
+    # Extract all unique locations from suggestions
+    all_locations_dict = {}
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            day_location = day.get("location")
+            if day_location:
+                location_id = f"loc_{hashlib.md5(day_location.encode()).hexdigest()[:12]}"
+                if location_id not in all_locations_dict:
+                    all_locations_dict[location_id] = {
+                        "location_id": location_id,
+                        "name": day_location,
+                        "description": day.get("description", ""),
+                        "lat": None,
+                        "lon": None
+                    }
+            
+            activities_list = day.get("activities", [])
+            for activity in activities_list:
+                location_name = activity.get("location") or activity.get("start_location")
+                if location_name:
+                    location_id = f"loc_{hashlib.md5(location_name.encode()).hexdigest()[:12]}"
+                    if location_id not in all_locations_dict:
+                        all_locations_dict[location_id] = {
+                            "location_id": location_id,
+                            "name": location_name,
+                            "description": "",
+                            "lat": activity.get("start_lat"),
+                            "lon": activity.get("start_lon")
+                        }
+    
+    # Enrich with vote data
     locations = []
-    for mock_location in MOCK_LOCATIONS:
-        location_id = mock_location.get("location_id")
+    for location_id, location in all_locations_dict.items():
         counts = location_votes.get(location_id, {"upvotes": 0, "downvotes": 0})
         net_score = counts["upvotes"] - counts["downvotes"]
         
-        location = {
-            **mock_location,
+        location_with_votes = {
+            **location,
             "upvotes": counts["upvotes"],
             "downvotes": counts["downvotes"],
             "net_score": net_score
         }
-        locations.append(location)
+        locations.append(location_with_votes)
+    
+    # Fallback to mock data if no suggestions
+    if not locations:
+        for mock_location in MOCK_LOCATIONS:
+            location_id = mock_location.get("location_id")
+            counts = location_votes.get(location_id, {"upvotes": 0, "downvotes": 0})
+            net_score = counts["upvotes"] - counts["downvotes"]
+            
+            location = {
+                **mock_location,
+                "upvotes": counts["upvotes"],
+                "downvotes": counts["downvotes"],
+                "net_score": net_score
+            }
+            locations.append(location)
     
     # Get cuisines from mock data and enrich with votes
     cuisines = []
@@ -789,6 +878,7 @@ async def get_all_trip_suggestions(tripID: str = Query(...)):
 async def get_activity_poll(tripID: str = Query(...), userID: str = Query(None)):
     """
     Get activity poll with real vote counts from database.
+    Extracts activities from submitted brainstorm suggestions.
     If userID is provided, also includes the user's vote for each activity.
     """
     if db is None:
@@ -823,29 +913,183 @@ async def get_activity_poll(tripID: str = Query(...), userID: str = Query(None))
         if userID and vote["userID"] == userID:
             user_votes[activity_id] = vote["vote"]
     
-    # Start with mock activities and enrich with real vote data
+    # Get all submitted suggestions for this trip
+    suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).to_list(length=100)
+    
+    # Extract all activities from suggestions
+    all_activities = {}
+    
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            activities = day.get("activities", [])
+            for activity in activities:
+                # Use activity_id if available, otherwise create a hash-based ID
+                activity_id = activity.get("activity_id")
+                if not activity_id:
+                    # Create a unique ID based on activity content
+                    activity_key = f"{activity.get('activity_name', '')}_{activity.get('type', '')}_{activity.get('location', '')}"
+                    activity_id = hashlib.md5(activity_key.encode()).hexdigest()[:12]
+                    activity_id = f"act_{activity_id}"
+                
+                # Only add if we haven't seen this activity_id before
+                if activity_id not in all_activities:
+                    # Normalize activity data to match expected format
+                    normalized_activity = {
+                        "activity_id": activity_id,
+                        "activity_name": activity.get("activity_name", "Unnamed Activity"),
+                        "type": activity.get("type", "sightseeing"),
+                        "description": activity.get("description", activity.get("activity_description", "")),
+                        "vigor": activity.get("vigor", "medium"),
+                        "location": activity.get("location", activity.get("start_location", "")),
+                        "from_date_time": activity.get("from_date_time"),
+                        "to_date_time": activity.get("to_date_time"),
+                        "start_location": activity.get("start_location", activity.get("location", "")),
+                        "start_lat": activity.get("start_lat"),
+                        "start_lon": activity.get("start_lon"),
+                        "end_location": activity.get("end_location", activity.get("location", "")),
+                        "end_lat": activity.get("end_lat"),
+                        "end_lon": activity.get("end_lon"),
+                    }
+                    all_activities[activity_id] = normalized_activity
+    
+    # Convert to list and enrich with vote data
     activities = []
-    for mock_activity in MOCK_ACTIVITIES:
-        activity_id = mock_activity["activity_id"]
-        
-        # Get real vote counts from database
+    for activity_id, activity in all_activities.items():
         counts = vote_counts.get(activity_id, {"upvotes": 0, "downvotes": 0})
         
-        activity = {
-            **mock_activity,
+        activity_with_votes = {
+            **activity,
             "upvotes": counts["upvotes"],
             "downvotes": counts["downvotes"],
             "user_vote": user_votes.get(activity_id, None)
         }
-        activities.append(activity)
+        activities.append(activity_with_votes)
+    
+    # If no activities from suggestions, fall back to mock data
+    if not activities:
+        for mock_activity in MOCK_ACTIVITIES:
+            activity_id = mock_activity["activity_id"]
+            counts = vote_counts.get(activity_id, {"upvotes": 0, "downvotes": 0})
+            activity = {
+                **mock_activity,
+                "upvotes": counts["upvotes"],
+                "downvotes": counts["downvotes"],
+                "user_vote": user_votes.get(activity_id, None)
+            }
+            activities.append(activity)
     
     return {"activities": activities}
 
 @app.get("/polls/get/location")
-async def get_location_poll(tripID: str = Query(...)):
-    """Get location poll (mock data)."""
-    # Return mock locations regardless of tripID
-    return {"locations": MOCK_LOCATIONS}
+async def get_location_poll(tripID: str = Query(...), userID: str = Query(None)):
+    """
+    Get location poll with real vote counts from database.
+    Extracts locations from submitted brainstorm suggestions.
+    If userID is provided, also includes the user's vote for each location.
+    """
+    if db is None:
+        # Fallback to mock data if database not connected
+        return {"locations": MOCK_LOCATIONS}
+    
+    votes_collection = db.votes
+    
+    # Get all votes for locations in this trip
+    location_votes = await votes_collection.find({
+        "tripID": tripID,
+        "voteType": "location"
+    }).to_list(length=1000)
+    
+    # Aggregate votes by locationID
+    vote_counts = {}
+    user_votes = {}
+    
+    for vote in location_votes:
+        location_id = vote["optionID"]
+        
+        # Count upvotes and downvotes
+        if location_id not in vote_counts:
+            vote_counts[location_id] = {"upvotes": 0, "downvotes": 0}
+        
+        if vote["vote"]:
+            vote_counts[location_id]["upvotes"] += 1
+        else:
+            vote_counts[location_id]["downvotes"] += 1
+        
+        # Track user's vote if userID provided
+        if userID and vote["userID"] == userID:
+            user_votes[location_id] = vote["vote"]
+    
+    # Get all submitted suggestions for this trip
+    suggestions = await db.trip_suggestions.find({
+        "tripID": tripID,
+        "status": "submitted"
+    }).to_list(length=100)
+    
+    # Extract all unique locations from suggestions
+    all_locations = {}
+    
+    for suggestion in suggestions:
+        days = suggestion.get("days", [])
+        for day in days:
+            # Get day location
+            day_location = day.get("location")
+            if day_location:
+                location_id = f"loc_{hashlib.md5(day_location.encode()).hexdigest()[:12]}"
+                if location_id not in all_locations:
+                    all_locations[location_id] = {
+                        "location_id": location_id,
+                        "name": day_location,
+                        "type": "city",  # Default type
+                        "lat": None,
+                        "lon": None
+                    }
+            
+            # Get locations from activities
+            activities = day.get("activities", [])
+            for activity in activities:
+                location_name = activity.get("location") or activity.get("start_location")
+                if location_name:
+                    location_id = f"loc_{hashlib.md5(location_name.encode()).hexdigest()[:12]}"
+                    if location_id not in all_locations:
+                        all_locations[location_id] = {
+                            "location_id": location_id,
+                            "name": location_name,
+                            "type": "city",  # Default type
+                            "lat": activity.get("start_lat"),
+                            "lon": activity.get("start_lon")
+                        }
+    
+    # Convert to list and enrich with vote data
+    locations = []
+    for location_id, location in all_locations.items():
+        counts = vote_counts.get(location_id, {"upvotes": 0, "downvotes": 0})
+        
+        location_with_votes = {
+            **location,
+            "upvotes": counts["upvotes"],
+            "downvotes": counts["downvotes"],
+            "user_vote": user_votes.get(location_id, None)
+        }
+        locations.append(location_with_votes)
+    
+    # If no locations from suggestions, fall back to mock data
+    if not locations:
+        for mock_location in MOCK_LOCATIONS:
+            location_id = mock_location["location_id"]
+            counts = vote_counts.get(location_id, {"upvotes": 0, "downvotes": 0})
+            location = {
+                **mock_location,
+                "upvotes": counts["upvotes"],
+                "downvotes": counts["downvotes"],
+                "user_vote": user_votes.get(location_id, None)
+            }
+            locations.append(location)
+    
+    return {"locations": locations}
 
 @app.get("/polls/get/food_cuisines")
 async def get_food_cuisines_poll(tripID: str = Query(...), userID: str = Query(None)):

@@ -98,9 +98,29 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
+.phase-item.clickable {
+  cursor: pointer;
+}
+
+.phase-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+  border-color: #5568d3;
+}
+
+.phase-item.clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
 .phase-item.completed {
   border-color: #4CAF50;
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+}
+
+.phase-item.completed.clickable:hover {
+  border-color: #45a049;
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
 }
 
 .phase-item.disabled {
