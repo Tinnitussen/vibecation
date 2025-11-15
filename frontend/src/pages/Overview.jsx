@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
+import TripChat from '../components/TripChat'
 import './Overview.css'
 
 function Overview() {
@@ -155,7 +156,9 @@ function Overview() {
 
   return (
     <div className="overview-page">
-      <header className="overview-header">
+      <div className="overview-layout">
+        <div className="overview-content">
+          <header className="overview-header">
         <div className="header-top-actions">
           <button 
             className="btn-home"
@@ -394,6 +397,11 @@ function Overview() {
           </button>
         </div>
       </main>
+        </div>
+        <aside className="overview-chat-sidebar">
+          <TripChat tripID={tripID} />
+        </aside>
+      </div>
     </div>
   )
 }
