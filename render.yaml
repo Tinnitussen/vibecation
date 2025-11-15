@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: vibecation-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile.prod
+    dockerContext: ./frontend
+    buildCommand: docker build -t vibecation-frontend --build-arg VITE_API_URL=$VITE_API_URL -f ./frontend/Dockerfile.prod ./frontend
+    startCommand: docker run -p 80:80 vibecation-frontend
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+
+  - type: web
+    name: vibecation-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile.prod
+    dockerContext: ./backend
+    envVars:
+      - key: MONGODB_URL
+        fromDatabase:
+          name: vibecation-mongodb
+          property: connectionString
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        sync: false
+
+databases:
+  - name: vibecation-mongodb
+    databaseName: vibecation
+    plan: free
+
