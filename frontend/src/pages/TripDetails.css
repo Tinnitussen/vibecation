@@ -95,6 +95,32 @@
   margin-bottom: 0.5rem;
 }
 
+.header-actions {
+  margin-top: 1rem;
+}
+
+.toggle-map-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #FF00FF 0%, #FF1493 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(255, 0, 255, 0.3);
+}
+
+.toggle-map-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
+}
+
+.toggle-map-btn.active {
+  background: linear-gradient(135deg, #9C27B0 0%, #FF00FF 100%);
+}
+
 .details-main {
   max-width: 1200px;
   margin: 0 auto;
@@ -280,6 +306,23 @@
   text-align: center;
   padding: 3rem;
   color: #757575;
+}
+
+.map-section {
+  background: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.map-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #FF00FF;
 }
 
 /* Responsive Design */

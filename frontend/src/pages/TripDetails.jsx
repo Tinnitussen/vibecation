@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import apiClient from '../api/client'
+import TripMapView from '../components/TripMapView'
 import './TripDetails.css'
+import '../components/TripMapView.css'
 
 function TripDetails() {
   const { tripID } = useParams()
@@ -13,6 +15,7 @@ function TripDetails() {
   const [loading, setLoading] = useState(true)
   const [trip, setTrip] = useState(null)
   const [details, setDetails] = useState(null)
+  const [showMap, setShowMap] = useState(false)
 
   useEffect(() => {
     loadTripData()
@@ -142,6 +145,14 @@ function TripDetails() {
           <div className="breadcrumb">
             Dashboard &gt; Trip Overview &gt; Details
           </div>
+          <div className="header-actions">
+            <button
+              className={`toggle-map-btn ${showMap ? 'active' : ''}`}
+              onClick={() => setShowMap(!showMap)}
+            >
+              {showMap ? '📋 Show Itinerary' : '🗺️ Show Map'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -153,7 +164,13 @@ function TripDetails() {
           </div>
         )}
 
-        <div className="itinerary-timeline">
+        {showMap ? (
+          <div className="map-section">
+            <h2>Map View</h2>
+            <TripMapView days={details.days || []} />
+          </div>
+        ) : (
+          <div className="itinerary-timeline">
           <h2>Itinerary</h2>
           {details.days && details.days.length > 0 ? (
             <div className="days-container">
@@ -230,6 +247,7 @@ function TripDetails() {
             </div>
           )}
         </div>
+        )}
       </main>
     </div>
   )
