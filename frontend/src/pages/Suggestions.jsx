@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -21,6 +21,7 @@ function Suggestions() {
   const [brainstormStatus, setBrainstormStatus] = useState(null)
   const [pollingStatus, setPollingStatus] = useState(null)
   const [userFinishedVoting, setUserFinishedVoting] = useState(false)
+  const hasNavigatedRef = useRef(false)
 
   const checkPollingCompletion = useCallback(async () => {
     try {
@@ -43,13 +44,24 @@ function Suggestions() {
             console.error('Failed to finalize polls:', err)
           }
         }
+        
+        // Navigate to details page when all users finish voting (only once)
+        if (!hasNavigatedRef.current) {
+          hasNavigatedRef.current = true
+          // Small delay to show the success message before navigating
+          setTimeout(() => {
+            navigate(`/trips/${tripID}/details`)
+          }, 2000)
+        }
       }
     } catch (err) {
       console.error('Failed to check polling completion:', err)
     }
-  }, [tripID, userID, toast])
+  }, [tripID, userID, toast, navigate])
 
   useEffect(() => {
+    // Reset navigation ref when tripID changes
+    hasNavigatedRef.current = false
     loadData()
     // Poll for polling completion status every 5 seconds
     const interval = setInterval(() => {
