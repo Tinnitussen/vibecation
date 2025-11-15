@@ -706,6 +706,58 @@ paths:
         '404':
           description: Trip not found
 
+  /trips/{tripID}/details:
+    get:
+      summary: Get trip details configuration
+      description: Retrieve all trip details configuration including accommodations, transportation, documents, budget, and additional details
+      parameters:
+        - name: tripID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trip details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripDetails'
+        '404':
+          description: Trip not found
+
+    put:
+      summary: Update trip details configuration
+      description: Update trip details configuration including accommodations, transportation, documents, budget, and additional details
+      parameters:
+        - name: tripID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripDetails'
+      responses:
+        '200':
+          description: Trip details updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  tripDetails:
+                    $ref: '#/components/schemas/TripDetails'
+        '400':
+          description: Invalid request data
+        '404':
+          description: Trip not found
+
   /users:
     post:
       summary: Create a new user account
@@ -973,3 +1025,343 @@ components:
         created_at:
           type: string
           format: date-time
+
+    TripDetails:
+      type: object
+      properties:
+        tripID:
+          type: string
+        accommodations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Accommodation'
+        transportation:
+          $ref: '#/components/schemas/Transportation'
+        documents:
+          $ref: '#/components/schemas/TravelDocuments'
+        budget:
+          $ref: '#/components/schemas/Budget'
+        additional:
+          $ref: '#/components/schemas/AdditionalDetails'
+        updatedAt:
+          type: string
+          format: date-time
+
+    Accommodation:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [hotel, apartment, hostel, resort, villa, Airbnb, other]
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        address:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        phone:
+          type: string
+        bookingReference:
+          type: string
+        confirmationNumber:
+          type: string
+        notes:
+          type: string
+
+    Transportation:
+      type: object
+      properties:
+        flights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Flight'
+        rentalCar:
+          $ref: '#/components/schemas/RentalCar'
+        publicTransport:
+          $ref: '#/components/schemas/PublicTransport'
+        other:
+          type: string
+
+    Flight:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [outbound, return, connecting]
+        departureAirport:
+          type: string
+        arrivalAirport:
+          type: string
+        departureDateTime:
+          type: string
+          format: date-time
+        arrivalDateTime:
+          type: string
+          format: date-time
+        airline:
+          type: string
+        flightNumber:
+          type: string
+        bookingReference:
+          type: string
+        confirmationNumber:
+          type: string
+        seatAssignments:
+          type: string
+        notes:
+          type: string
+
+    RentalCar:
+      type: object
+      properties:
+        hasRentalCar:
+          type: boolean
+        company:
+          type: string
+        pickupLocation:
+          type: string
+        pickupDateTime:
+          type: string
+          format: date-time
+        dropoffLocation:
+          type: string
+        dropoffDateTime:
+          type: string
+          format: date-time
+        carType:
+          type: string
+          enum: [economy, compact, midsize, SUV, luxury]
+        bookingReference:
+          type: string
+        confirmationNumber:
+          type: string
+
+    PublicTransport:
+      type: object
+      properties:
+        passes:
+          type: array
+          items:
+            type: string
+            enum: [metro, bus, train, ferry]
+        details:
+          type: string
+
+    TravelDocuments:
+      type: object
+      properties:
+        passport:
+          $ref: '#/components/schemas/PassportInfo'
+        visa:
+          $ref: '#/components/schemas/VisaInfo'
+        travelInsurance:
+          $ref: '#/components/schemas/TravelInsurance'
+        emergencyContacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmergencyContact'
+
+    PassportInfo:
+      type: object
+      properties:
+        required:
+          type: boolean
+        expirationDate:
+          type: string
+          format: date
+        minimumValidityMonths:
+          type: integer
+        notes:
+          type: string
+
+    VisaInfo:
+      type: object
+      properties:
+        required:
+          type: boolean
+        type:
+          type: string
+          enum: [tourist, business, transit, other]
+        applicationDate:
+          type: string
+          format: date
+        approvalDate:
+          type: string
+          format: date
+        visaNumber:
+          type: string
+        notes:
+          type: string
+
+    TravelInsurance:
+      type: object
+      properties:
+        hasInsurance:
+          type: boolean
+        provider:
+          type: string
+        policyNumber:
+          type: string
+        coverageAmount:
+          type: number
+        currency:
+          type: string
+        emergencyContact:
+          type: string
+        notes:
+          type: string
+
+    EmergencyContact:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        relationship:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        notes:
+          type: string
+
+    Budget:
+      type: object
+      properties:
+        total:
+          type: number
+        currency:
+          type: string
+        breakdown:
+          $ref: '#/components/schemas/BudgetBreakdown'
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+
+    BudgetBreakdown:
+      type: object
+      properties:
+        accommodation:
+          type: number
+        food:
+          type: number
+        activities:
+          type: number
+        transportation:
+          type: number
+        shopping:
+          type: number
+        miscellaneous:
+          type: number
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [accommodation, food, activities, transportation, shopping, miscellaneous]
+        description:
+          type: string
+        amount:
+          type: number
+
+    AdditionalDetails:
+      type: object
+      properties:
+        packingList:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackingItem'
+        importantNotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportantNote'
+        weather:
+          $ref: '#/components/schemas/WeatherInfo'
+        timeZone:
+          $ref: '#/components/schemas/TimeZoneInfo'
+
+    PackingItem:
+      type: object
+      properties:
+        id:
+          type: string
+        item:
+          type: string
+        packed:
+          type: boolean
+
+    ImportantNote:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    WeatherInfo:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/CurrentWeather'
+        forecast:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeatherForecast'
+
+    CurrentWeather:
+      type: object
+      properties:
+        temperature:
+          type: number
+        condition:
+          type: string
+        humidity:
+          type: number
+
+    WeatherForecast:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        high:
+          type: number
+        low:
+          type: number
+        condition:
+          type: string
+
+    TimeZoneInfo:
+      type: object
+      properties:
+        destination:
+          type: string
+        offset:
+          type: string
+        differenceFromHome:
+          type: string

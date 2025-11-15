@@ -105,6 +105,159 @@ class CreateFinalPlanRequest(BaseModel):
     old_plans: List[List[dict]]
     poll_results: dict
 
+# Trip Details Models
+class Accommodation(BaseModel):
+    id: Optional[str] = None
+    name: str
+    type: str  # hotel, apartment, hostel, resort, villa, Airbnb, other
+    checkIn: Optional[str] = None  # date string
+    checkOut: Optional[str] = None  # date string
+    address: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    phone: Optional[str] = None
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    notes: Optional[str] = None
+
+class Flight(BaseModel):
+    id: Optional[str] = None
+    type: str  # outbound, return, connecting
+    departureAirport: Optional[str] = None
+    arrivalAirport: Optional[str] = None
+    departureDateTime: Optional[str] = None  # datetime string
+    arrivalDateTime: Optional[str] = None  # datetime string
+    airline: Optional[str] = None
+    flightNumber: Optional[str] = None
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    seatAssignments: Optional[str] = None
+    notes: Optional[str] = None
+
+class RentalCar(BaseModel):
+    hasRentalCar: bool = False
+    company: Optional[str] = None
+    pickupLocation: Optional[str] = None
+    pickupDateTime: Optional[str] = None  # datetime string
+    dropoffLocation: Optional[str] = None
+    dropoffDateTime: Optional[str] = None  # datetime string
+    carType: Optional[str] = None  # economy, compact, midsize, SUV, luxury
+    bookingReference: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+
+class PublicTransport(BaseModel):
+    passes: List[str] = []  # metro, bus, train, ferry
+    details: Optional[str] = None
+
+class Transportation(BaseModel):
+    flights: List[Flight] = []
+    rentalCar: Optional[RentalCar] = None
+    publicTransport: Optional[PublicTransport] = None
+    other: Optional[str] = None
+
+class PassportInfo(BaseModel):
+    required: bool = False
+    expirationDate: Optional[str] = None  # date string
+    minimumValidityMonths: Optional[int] = None
+    notes: Optional[str] = None
+
+class VisaInfo(BaseModel):
+    required: bool = False
+    type: Optional[str] = None  # tourist, business, transit, other
+    applicationDate: Optional[str] = None  # date string
+    approvalDate: Optional[str] = None  # date string
+    visaNumber: Optional[str] = None
+    notes: Optional[str] = None
+
+class TravelInsurance(BaseModel):
+    hasInsurance: bool = False
+    provider: Optional[str] = None
+    policyNumber: Optional[str] = None
+    coverageAmount: Optional[float] = None
+    currency: Optional[str] = None
+    emergencyContact: Optional[str] = None
+    notes: Optional[str] = None
+
+class EmergencyContact(BaseModel):
+    id: Optional[str] = None
+    name: str
+    relationship: Optional[str] = None
+    phone: str
+    email: Optional[str] = None
+    notes: Optional[str] = None
+
+class TravelDocuments(BaseModel):
+    passport: Optional[PassportInfo] = None
+    visa: Optional[VisaInfo] = None
+    travelInsurance: Optional[TravelInsurance] = None
+    emergencyContacts: List[EmergencyContact] = []
+
+class BudgetBreakdown(BaseModel):
+    accommodation: Optional[float] = None
+    food: Optional[float] = None
+    activities: Optional[float] = None
+    transportation: Optional[float] = None
+    shopping: Optional[float] = None
+    miscellaneous: Optional[float] = None
+
+class Expense(BaseModel):
+    id: Optional[str] = None
+    date: str  # date string
+    category: str  # accommodation, food, activities, transportation, shopping, miscellaneous
+    description: Optional[str] = None
+    amount: float
+
+class Budget(BaseModel):
+    total: Optional[float] = None
+    currency: Optional[str] = None
+    breakdown: Optional[BudgetBreakdown] = None
+    expenses: List[Expense] = []
+
+class PackingItem(BaseModel):
+    id: Optional[str] = None
+    item: str
+    packed: bool = False
+
+class ImportantNote(BaseModel):
+    id: Optional[str] = None
+    content: str
+    createdAt: Optional[str] = None  # datetime string
+
+class CurrentWeather(BaseModel):
+    temperature: Optional[float] = None
+    condition: Optional[str] = None
+    humidity: Optional[float] = None
+
+class WeatherForecast(BaseModel):
+    date: str  # date string
+    high: Optional[float] = None
+    low: Optional[float] = None
+    condition: Optional[str] = None
+
+class WeatherInfo(BaseModel):
+    current: Optional[CurrentWeather] = None
+    forecast: List[WeatherForecast] = []
+
+class TimeZoneInfo(BaseModel):
+    destination: Optional[str] = None
+    offset: Optional[str] = None
+    differenceFromHome: Optional[str] = None
+
+class AdditionalDetails(BaseModel):
+    packingList: List[PackingItem] = []
+    importantNotes: List[ImportantNote] = []
+    weather: Optional[WeatherInfo] = None
+    timeZone: Optional[TimeZoneInfo] = None
+
+class TripDetails(BaseModel):
+    tripID: str
+    accommodations: List[Accommodation] = []
+    transportation: Optional[Transportation] = None
+    documents: Optional[TravelDocuments] = None
+    budget: Optional[Budget] = None
+    additional: Optional[AdditionalDetails] = None
+    updatedAt: Optional[str] = None  # datetime string
+
 # Helper functions
 async def get_next_id(collection_name: str) -> str:
     """Generate next sequential ID for a collection."""
@@ -358,6 +511,27 @@ async def create_trip(trip_data: TripCreate, userID: str = Query(...)):
         "message": "Trip created successfully"
     }
 
+@app.get("/trips/{tripID}", response_model=TripResponse)
+async def get_trip(tripID: str):
+    """Get trip details."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    trip = await db.trips.find_one({"tripID": tripID})
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    return TripResponse(
+        tripID=trip["tripID"],
+        title=trip.get("title", ""),
+        description=trip.get("description"),
+        members=trip.get("members", []),
+        ownerID=trip.get("ownerID", ""),
+        createdAt=trip.get("createdAt", datetime.utcnow()),
+        updatedAt=trip.get("updatedAt", datetime.utcnow())
+    )
+
 @app.delete("/trips/{tripID}", status_code=204)
 async def delete_trip(tripID: str):
     """Delete a trip."""
@@ -433,6 +607,241 @@ async def join_trip_by_invite_code(invite_code: str = Query(..., alias="inviteCo
         "title": trip.get("title", ""),
         "message": "Successfully joined trip",
         "alreadyMember": False
+    }
+
+# Mock data for trip details
+MOCK_TRIP_DETAILS = {
+    "tripID": "trip_001",
+    "accommodations": [
+        {
+            "id": "acc_001",
+            "name": "Grand Hotel Barcelona",
+            "type": "hotel",
+            "checkIn": "2024-07-15",
+            "checkOut": "2024-07-20",
+            "address": "123 La Rambla",
+            "city": "Barcelona",
+            "country": "Spain",
+            "phone": "+34 93 123 4567",
+            "bookingReference": "GHB-2024-789",
+            "confirmationNumber": "CNF-ABC123",
+            "notes": "Requested room with sea view"
+        }
+    ],
+    "transportation": {
+        "flights": [
+            {
+                "id": "flight_001",
+                "type": "outbound",
+                "departureAirport": "JFK",
+                "arrivalAirport": "BCN",
+                "departureDateTime": "2024-07-15T10:30:00Z",
+                "arrivalDateTime": "2024-07-15T22:15:00Z",
+                "airline": "Iberia",
+                "flightNumber": "IB6251",
+                "bookingReference": "IB-789456",
+                "confirmationNumber": "ABC123XYZ",
+                "seatAssignments": "12A, 12B",
+                "notes": "Window seats requested"
+            },
+            {
+                "id": "flight_002",
+                "type": "return",
+                "departureAirport": "BCN",
+                "arrivalAirport": "JFK",
+                "departureDateTime": "2024-07-20T14:00:00Z",
+                "arrivalDateTime": "2024-07-20T18:30:00Z",
+                "airline": "Iberia",
+                "flightNumber": "IB6252",
+                "bookingReference": "IB-789457",
+                "confirmationNumber": "ABC124XYZ"
+            }
+        ],
+        "rentalCar": {
+            "hasRentalCar": True,
+            "company": "Hertz",
+            "pickupLocation": "Barcelona Airport",
+            "pickupDateTime": "2024-07-15T23:00:00Z",
+            "dropoffLocation": "Barcelona Airport",
+            "dropoffDateTime": "2024-07-20T12:00:00Z",
+            "carType": "midsize",
+            "bookingReference": "HZ-456789",
+            "confirmationNumber": "HZ-CNF-123"
+        },
+        "publicTransport": {
+            "passes": ["metro", "bus"],
+            "details": "10-day metro pass for Barcelona"
+        },
+        "other": "Taxi from airport to hotel"
+    },
+    "documents": {
+        "passport": {
+            "required": True,
+            "expirationDate": "2026-12-31",
+            "minimumValidityMonths": 6,
+            "notes": "Passport must be valid for at least 6 months after return date"
+        },
+        "visa": {
+            "required": False,
+            "type": None,
+            "applicationDate": None,
+            "approvalDate": None,
+            "visaNumber": None,
+            "notes": "No visa required for US citizens visiting Spain"
+        },
+        "travelInsurance": {
+            "hasInsurance": True,
+            "provider": "World Nomads",
+            "policyNumber": "WN-2024-789456",
+            "coverageAmount": 50000,
+            "currency": "USD",
+            "emergencyContact": "+1-800-123-4567",
+            "notes": "Covers medical emergencies and trip cancellation"
+        },
+        "emergencyContacts": [
+            {
+                "id": "contact_001",
+                "name": "John Doe",
+                "relationship": "Spouse",
+                "phone": "+1-555-0100",
+                "email": "john.doe@example.com",
+                "notes": "Primary emergency contact"
+            },
+            {
+                "id": "contact_002",
+                "name": "Jane Smith",
+                "relationship": "Sister",
+                "phone": "+1-555-0101",
+                "email": "jane.smith@example.com"
+            }
+        ]
+    },
+    "budget": {
+        "total": 5000,
+        "currency": "USD",
+        "breakdown": {
+            "accommodation": 1500,
+            "food": 1200,
+            "activities": 1000,
+            "transportation": 800,
+            "shopping": 300,
+            "miscellaneous": 200
+        },
+        "expenses": [
+            {
+                "id": "exp_001",
+                "date": "2024-07-15",
+                "category": "food",
+                "description": "Dinner at restaurant",
+                "amount": 85.50
+            },
+            {
+                "id": "exp_002",
+                "date": "2024-07-16",
+                "category": "activities",
+                "description": "Sagrada Familia tickets",
+                "amount": 45.00
+            }
+        ]
+    },
+    "additional": {
+        "packingList": [
+            {"id": "item_001", "item": "Passport", "packed": True},
+            {"id": "item_002", "item": "Travel adapter", "packed": False},
+            {"id": "item_003", "item": "Sunscreen SPF 50", "packed": False},
+            {"id": "item_004", "item": "Comfortable walking shoes", "packed": True}
+        ],
+        "importantNotes": [
+            {
+                "id": "note_001",
+                "content": "Remember to exchange currency at airport",
+                "createdAt": "2024-07-10T10:00:00Z"
+            },
+            {
+                "id": "note_002",
+                "content": "Check-in time is 3 PM, early check-in available for fee",
+                "createdAt": "2024-07-11T14:30:00Z"
+            }
+        ],
+        "weather": {
+            "current": {
+                "temperature": 28,
+                "condition": "Sunny",
+                "humidity": 65
+            },
+            "forecast": [
+                {
+                    "date": "2024-07-15",
+                    "high": 30,
+                    "low": 22,
+                    "condition": "Sunny"
+                }
+            ]
+        },
+        "timeZone": {
+            "destination": "Europe/Madrid",
+            "offset": "+2:00",
+            "differenceFromHome": "+6 hours"
+        }
+    },
+    "updatedAt": "2024-07-12T10:30:00Z"
+}
+
+@app.get("/trips/{tripID}/details", response_model=TripDetails)
+async def get_trip_details(tripID: str):
+    """Get trip details configuration."""
+    if db is None:
+        # Return mock data if database not connected
+        mock_data = MOCK_TRIP_DETAILS.copy()
+        mock_data["tripID"] = tripID
+        return TripDetails(**mock_data)
+    
+    # Check if trip exists
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Try to get trip details from database
+    trip_details = await db.trip_details.find_one({"tripID": tripID})
+    
+    if trip_details:
+        # Remove MongoDB _id field
+        trip_details.pop("_id", None)
+        return TripDetails(**trip_details)
+    else:
+        # Return mock data if no details exist
+        mock_data = MOCK_TRIP_DETAILS.copy()
+        mock_data["tripID"] = tripID
+        return TripDetails(**mock_data)
+
+@app.put("/trips/{tripID}/details", response_model=dict)
+async def update_trip_details(tripID: str, details: TripDetails):
+    """Update trip details configuration."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    # Check if trip exists
+    trip = await db.trips.find_one({"tripID": tripID})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Ensure tripID matches
+    details.tripID = tripID
+    
+    # Convert to dict and add updated timestamp
+    details_dict = details.model_dump()
+    details_dict["updatedAt"] = datetime.utcnow().isoformat()
+    
+    # Upsert trip details
+    await db.trip_details.update_one(
+        {"tripID": tripID},
+        {"$set": details_dict},
+        upsert=True
+    )
+    
+    return {
+        "message": "Trip details updated successfully",
+        "tripDetails": details_dict
     }
 
 # Mock data for suggestions and polls
