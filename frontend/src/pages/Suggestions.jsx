@@ -91,7 +91,7 @@ function Suggestions() {
   const loadLocationPoll = async () => {
     try {
       const response = await apiClient.get('/polls/get/location', {
-        params: { tripID }
+        params: { tripID, userID }
       })
       setLocations(response.data.locations)
     } catch (err) {
@@ -479,7 +479,7 @@ function Suggestions() {
             )}
             {activeTab === 'locations' && (
               <LocationPoll
-                locations={locations}
+                locations={locations || []}
                 onVote={handleLocationVote}
               />
             )}
@@ -557,9 +557,19 @@ function ParticipantSuggestionCard({ participant, suggestion, totalDays, totalAc
 
 // Unified poll component for activities, locations, and cuisines
 function UnifiedPoll({ items, onVote, getItemId, getItemName, getItemHeader, getItemDescription, getItemExtra }) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="poll-list">
+        <p className="no-items">No items available for voting yet.</p>
+      </div>
+    )
+  }
+  
   return (
     <div className="poll-list">
       {items.map((item) => {
+        if (!item) return null
+        
         const itemId = getItemId(item)
         const itemName = getItemName(item)
         const header = getItemHeader(item)
@@ -641,11 +651,16 @@ function LocationPoll({ locations, onVote }) {
       getItemHeader={(item) => (
         <>
           <h3>{item.name}</h3>
-          <span className="location-type">{item.type}</span>
+          {item.type && <span className="location-type">{item.type}</span>}
         </>
       )}
       getItemDescription={() => null}
-      getItemExtra={(item) => `📍 ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}`}
+      getItemExtra={(item) => {
+        if (item.lat != null && item.lon != null) {
+          return `📍 ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}`
+        }
+        return item.location || null
+      }}
     />
   )
 }
