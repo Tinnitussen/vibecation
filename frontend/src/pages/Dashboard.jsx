@@ -14,14 +14,12 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
-  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [tripToDelete, setTripToDelete] = useState(null)
-  const [newTrip, setNewTrip] = useState({ title: '', description: '', members: '' })
+  const [newTrip, setNewTrip] = useState({ title: '', description: '' })
   const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
-  const [createdInviteCode, setCreatedInviteCode] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -74,22 +72,17 @@ function Dashboard() {
     setCreating(true)
     
     try {
-      const members = newTrip.members
-        .split(',')
-        .map(m => m.trim())
-        .filter(m => m)
-      
       const response = await apiClient.post(`/createtrip?userID=${userID}`, {
         title: newTrip.title,
         description: newTrip.description || undefined,
-        members: members
+        members: []
       })
       
       setShowCreateModal(false)
-      setNewTrip({ title: '', description: '', members: '' })
-      setCreatedInviteCode({ code: response.data.inviteCode, tripID: response.data.tripID })
-      setShowInviteCodeModal(true)
+      setNewTrip({ title: '', description: '' })
+      toast.success('Trip created successfully!')
       loadTrips()
+      navigate(`/trips/${response.data.tripID}/overview`)
     } catch (err) {
       console.error('Failed to create trip:', err)
       toast.error('Failed to create trip. Please try again.')
@@ -288,17 +281,6 @@ function Dashboard() {
                   rows="3"
                 />
               </div>
-              <div className="form-group">
-                <label htmlFor="trip-members">Members (comma-separated user IDs)</label>
-                <input
-                  id="trip-members"
-                  type="text"
-                  value={newTrip.members}
-                  onChange={(e) => setNewTrip({ ...newTrip, members: e.target.value })}
-                  placeholder="user_002, user_003"
-                />
-                <small>Or share the invite code after creation!</small>
-              </div>
               <div className="modal-actions">
                 <button
                   type="button"
@@ -357,43 +339,6 @@ function Dashboard() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {showInviteCodeModal && createdInviteCode && (
-        <div className="modal-overlay" onClick={() => {
-          setShowInviteCodeModal(false)
-          setCreatedInviteCode(null)
-          navigate(`/trips/${createdInviteCode.tripID}/overview`)
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>🎉 Trip Created!</h2>
-            <p>Share this invite code with others to let them join your trip:</p>
-            <div className="invite-code-display">
-              <code className="invite-code">{createdInviteCode.code}</code>
-              <button
-                className="btn-copy"
-                onClick={() => {
-                  navigator.clipboard.writeText(createdInviteCode.code)
-                  toast.success('Invite code copied to clipboard!')
-                }}
-              >
-                📋 Copy
-              </button>
-            </div>
-            <div className="modal-actions">
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  setShowInviteCodeModal(false)
-                  setCreatedInviteCode(null)
-                  navigate(`/trips/${createdInviteCode.tripID}/overview`)
-                }}
-              >
-                Go to Trip
-              </button>
-            </div>
           </div>
         </div>
       )}
