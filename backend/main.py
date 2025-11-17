@@ -76,9 +76,11 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Allow origins from environment variable or default to localhost
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://frontend:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,19 +91,13 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, pattern="^[a-zA-Z0-9_]+$")
     email: EmailStr
     name: str = Field(..., min_length=2, max_length=100)
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=2)
     
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
-        if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one number')
+        if len(v) < 2:
+            raise ValueError('Password must be at least 2 characters')
         return v
 
 class UserResponse(BaseModel):

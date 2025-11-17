@@ -40,24 +40,18 @@ function Register() {
     return () => clearTimeout(timer)
   }, [formData.email])
 
-  // Password strength calculation
+  // Password strength calculation (simplified for demo)
   useEffect(() => {
     const password = formData.password
-    if (password.length < 8) {
+    if (password.length < 2) {
       setPasswordStrength('weak')
       return
     }
     
-    const hasUpper = /[A-Z]/.test(password)
-    const hasLower = /[a-z]/.test(password)
-    const hasNumber = /[0-9]/.test(password)
-    const hasSpecial = /[^A-Za-z0-9]/.test(password)
-    
-    const requirements = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length
-    
-    if (requirements >= 4) {
+    // Very basic strength calculation for demo
+    if (password.length >= 6) {
       setPasswordStrength('strong')
-    } else if (requirements >= 2) {
+    } else if (password.length >= 3) {
       setPasswordStrength('medium')
     } else {
       setPasswordStrength('weak')
@@ -101,14 +95,8 @@ function Register() {
       newErrors.name = 'Name must be at least 2 characters'
     }
 
-    if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
-    } else if (!/[A-Z]/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter'
-    } else if (!/[a-z]/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one lowercase letter'
-    } else if (!/[0-9]/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one number'
+    if (formData.password.length < 2) {
+      newErrors.password = 'Password must be at least 2 characters'
     }
 
     if (formData.password !== formData.confirmPassword) {
